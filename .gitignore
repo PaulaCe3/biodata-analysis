@@ -18,3 +18,5 @@ __pycache__/
 
 # Modelos entrenados generados localmente
 outputs/models/*.joblib
+# Datos crudos externos
+data/raw/*
