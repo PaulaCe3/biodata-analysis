@@ -99,4 +99,34 @@ def evaluate_regression_model(model, X_test, y_test):
         "residuals": residuals
     }
 
-        
+def summarize_regression_evaluation(evaluation_result):
+    """
+    Resume los resultados de evaluación de un modelo de regresión.
+
+    Parameters
+    ----------
+    evaluation_result : dict
+        Resultado generado por evaluate_regression_model.
+
+    Returns
+    -------
+    dict
+        Resumen compacto de métricas y residuos.
+    """
+
+    metrics = evaluation_result["metrics"]
+    predictions = evaluation_result["predictions"]
+    residuals = evaluation_result["residuals"]
+
+    summary = {
+        "mae": metrics["mae"],
+        "rmse": metrics["rmse"],
+        "r2": metrics["r2"],
+        "n_predictions": len(predictions),
+        "mean_residual": float(np.mean(residuals)),
+        "min_residual": float(np.min(residuals)),
+        "max_residual": float(np.max(residuals))
+    }
+
+    return summary
+
