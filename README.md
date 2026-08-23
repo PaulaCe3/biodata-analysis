@@ -101,6 +101,14 @@ Referencias oficiales:
 
 - [Desplegar una app](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy)
 
+## Privacidad de la demostración pública
+
+- Se admiten archivos CSV, DATA y TXT de hasta 25 MB.
+- El dataset se procesa temporalmente durante la sesión de Streamlit.
+- Biodata no conserva una copia ni envía el contenido a servicios externos.
+- La demostración está destinada a datos públicos, sintéticos o de prueba.
+- No deben cargarse datos personales, clínicos, confidenciales o regulados.
+
 ## Limitaciones actuales
 
 - Solo se admiten objetivos numéricos de regresión.

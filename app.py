@@ -1292,7 +1292,15 @@ with st.sidebar:
     uploaded_file = st.file_uploader(
         "Archivo de datos",
         type=["csv", "data", "txt"],
-        help="Formatos admitidos: CSV, DATA y TXT."
+        help=(
+            "Formatos admitidos: CSV, DATA y TXT. "
+            "Tamaño máximo: 25 MB."
+        )
+    )
+
+    st.caption(
+        "Usá datos públicos o de prueba. No subas información personal, "
+        "clínica, confidencial o regulada."
     )
 
     has_header = st.checkbox(
@@ -1309,9 +1317,9 @@ with st.sidebar:
     st.markdown("**Procesamiento y privacidad**")
 
     st.caption(
-        "El análisis y los modelos predictivos se ejecutan en la sesión de "
-        "Biodata. El archivo se utiliza durante el análisis y no se guarda como "
-        "parte del proyecto."
+        "El archivo se procesa temporalmente durante la sesión. Biodata no "
+        "conserva una copia ni lo envía a servicios externos. Al cerrar o "
+        "reiniciar la sesión, el análisis deja de estar disponible."
     )
 
     st.caption("Versión 1 · Análisis y modelos predictivos")
