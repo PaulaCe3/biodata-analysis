@@ -63,6 +63,14 @@ def cross_validate_regression_mae(
         Valores de MAE obtenidos en cada fold.
     """
 
+    if n_splits < 2:
+        raise ValueError("n_splits debe ser mayor o igual que 2.")
+
+    if len(X_train) < n_splits:
+        raise ValueError(
+            "No hay suficientes filas de entrenamiento para la cantidad de folds."
+        )
+
     cv = KFold(
         n_splits=n_splits,
         shuffle=True,
@@ -206,5 +214,3 @@ def train_regression_model(
     )
 
     return pipeline
-
-    

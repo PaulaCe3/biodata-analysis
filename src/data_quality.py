@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def get_missing_values(df):
     """
     Cuenta los valores faltantes de cada columna.
@@ -36,6 +39,20 @@ def get_duplicate_count(df):
 
     return duplicate_count
 
+
+def get_infinite_values(df):
+    """Cuenta valores infinitos en las columnas numéricas."""
+
+    numeric_df = df.select_dtypes(include="number")
+
+    if numeric_df.empty:
+        return {}
+
+    return {
+        column: int(np.isinf(numeric_df[column]).sum())
+        for column in numeric_df.columns
+    }
+
 def get_quality_report(df):
     """
     Genera un resumen básico de calidad del dataset.
@@ -53,6 +70,7 @@ def get_quality_report(df):
 
     report = {
         "missing_values": get_missing_values(df),
+        "infinite_values": get_infinite_values(df),
         "duplicate_rows": get_duplicate_count(df)
     }
 

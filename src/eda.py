@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def get_numeric_summary(df):
     """
@@ -17,11 +18,14 @@ def get_numeric_summary(df):
 
     numeric_df = df.select_dtypes(include="number")
 
+    if numeric_df.empty:
+        return numeric_df
+
     summary = numeric_df.describe()
 
     return summary
 
-def get_categorical_summary(df):
+def get_categorical_summary(df, max_categories=50):
     """
     Genera un resumen de frecuencias para las variables categóricas.
 
@@ -37,15 +41,19 @@ def get_categorical_summary(df):
     """
 
     categorical_df = df.select_dtypes(
-        include=["object", "string", "category"]
+        include=["object", "string", "category", "bool"]
     )
 
     summary = {}
+
+    if max_categories < 1:
+        raise ValueError("max_categories debe ser mayor o igual que 1.")
 
     for column in categorical_df.columns:
         summary[column] = (
             categorical_df[column]
             .value_counts(dropna=False)
+            .head(max_categories)
             .to_dict()
         )
 
@@ -107,7 +115,7 @@ def plot_numeric_distribution(df, column, bins=30):
 
     return fig
 
-def plot_categorical_distribution(df, column):
+def plot_categorical_distribution(df, column, max_categories=30):
     """
     Genera un gráfico de barras para una variable categórica.
 
@@ -125,12 +133,24 @@ def plot_categorical_distribution(df, column):
         Figura generada.
     """
 
-    counts = df[column].value_counts(dropna=False)
+    if max_categories < 1:
+        raise ValueError("max_categories debe ser mayor o igual que 1.")
+
+    counts = (
+        df[column]
+        .value_counts(dropna=False)
+        .head(max_categories)
+    )
+
+    category_labels = [
+        "Sin dato" if pd.isna(value) else str(value)
+        for value in counts.index
+    ]
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
     ax.bar(
-        counts.index.astype(str),
+        category_labels,
         counts.values,
         edgecolor="black"
     )

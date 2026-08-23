@@ -3,6 +3,7 @@
 
 # Variables de entorno y claves privadas
 .env
+.streamlit/secrets.toml
 
 # Archivos temporales de Python
 __pycache__/
