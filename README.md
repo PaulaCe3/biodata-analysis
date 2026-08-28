@@ -5,6 +5,10 @@ construir modelos predictivos con conjuntos de datos biológicos tabulares. La
 versión actual trabaja con problemas de regresión y prioriza resultados
 comprensibles, auditables y útiles como apoyo a decisiones.
 
+## Aplicación en línea
+
+[Abrir Biodata](https://biodata-analysis.streamlit.app/)
+
 ## Funcionalidades
 
 - Carga de archivos CSV, DATA y TXT, con o sin encabezados.
@@ -89,13 +93,9 @@ sesión de Streamlit para evitar reentrenamientos al interactuar con el informe.
 
 ## Despliegue en Streamlit Community Cloud
 
-El repositorio ya contiene `requirements.txt`, el punto de entrada `app.py` y la
-configuración visual necesaria.
-
-1. Subí los cambios a GitHub.
-2. En [Streamlit Community Cloud](https://share.streamlit.io/), elegí **Create app**.
-3. Seleccioná el repositorio, la rama `main` y `app.py` como archivo principal.
-4. Guardá la configuración y desplegá.
+La demostración pública se encuentra disponible en
+[biodata-analysis.streamlit.app](https://biodata-analysis.streamlit.app/). El
+despliegue utiliza la rama `main` y `app.py` como archivo principal.
 
 Referencias oficiales:
 
@@ -129,5 +129,5 @@ Referencias oficiales:
 ## Estado
 
 Versión gratuita funcional para análisis, comparación, diagnóstico,
-interpretación e informe de modelos de regresión. El despliegue público solo
-requiere acceso a una cuenta de Streamlit Community Cloud.
+interpretación e informe de modelos de regresión, publicada en Streamlit
+Community Cloud.
