@@ -104,10 +104,19 @@ Referencias oficiales:
 ## Privacidad de la demostración pública
 
 - Se admiten archivos CSV, DATA y TXT de hasta 25 MB.
-- El dataset se procesa temporalmente durante la sesión de Streamlit.
-- Biodata no conserva una copia ni envía el contenido a servicios externos.
+- El dataset se transfiere al servidor de Streamlit Community Cloud en Estados
+  Unidos y se procesa temporalmente en memoria durante la sesión.
+- Biodata no guarda el archivo de forma permanente ni envía su contenido a
+  otros servicios.
+- Streamlit elimina el archivo de la memoria cuando la persona lo reemplaza,
+  lo quita o cierra la pestaña.
 - La demostración está destinada a datos públicos, sintéticos o de prueba.
 - No deben cargarse datos personales, clínicos, confidenciales o regulados.
+
+Referencias oficiales:
+
+- [Almacenamiento temporal de archivos](https://docs.streamlit.io/knowledge-base/using-streamlit/where-file-uploader-store-when-deleted)
+- [Seguridad de Streamlit Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/get-started/trust-and-security)
 
 ## Limitaciones actuales
 

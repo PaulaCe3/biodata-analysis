@@ -1317,9 +1317,11 @@ with st.sidebar:
     st.markdown("**Procesamiento y privacidad**")
 
     st.caption(
-        "El archivo se procesa temporalmente durante la sesión. Biodata no "
-        "conserva una copia ni lo envía a servicios externos. Al cerrar o "
-        "reiniciar la sesión, el análisis deja de estar disponible."
+        "El archivo se transfiere a los servidores de Streamlit Community "
+        "Cloud en Estados Unidos y se procesa temporalmente en memoria. "
+        "Biodata no guarda una copia permanente ni lo envía a otros servicios. "
+        "Al cerrar la pestaña, reemplazar o quitar el archivo, deja de estar "
+        "disponible."
     )
 
     st.caption("Versión 1 · Análisis y modelos predictivos")
