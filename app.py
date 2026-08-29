@@ -1,4 +1,6 @@
 from html import escape
+from importlib import reload
+from inspect import signature
 
 import streamlit as st
 
@@ -163,6 +165,14 @@ from src.data_loader import load_dataset, validate_column_names
 from src.data_profiler import get_dataset_fingerprint, get_dataset_profile
 from src.data_quality import get_quality_report
 
+import src.eda as eda_module
+
+# Streamlit puede conservar módulos importados entre dos despliegues consecutivos.
+# Si app.py ya espera la interfaz bilingüe pero el proceso mantiene una versión
+# anterior, se recarga el módulo antes de enlazar sus funciones.
+if "language" not in signature(eda_module.plot_numeric_distribution).parameters:
+    reload(eda_module)
+
 from src.eda import (
     get_numeric_summary,
     get_categorical_summary,
@@ -193,6 +203,12 @@ from src.evaluation import (
     evaluate_regression_model,
     summarize_regression_evaluation
 )
+
+import src.diagnostics as diagnostics_module
+
+if "language" not in signature(diagnostics_module.build_diagnostic_warnings).parameters:
+    reload(diagnostics_module)
+
 from src.diagnostics import (
     build_diagnostic_warnings,
     build_prediction_table,
@@ -205,6 +221,12 @@ from src.diagnostics import (
     plot_residuals,
     summarize_diagnostics
 )
+
+import src.report as report_module
+
+if "language" not in signature(report_module.build_full_report).parameters:
+    reload(report_module)
+
 from src.report import build_full_report
 from src.i18n import model_label, translate
 from src.plot_style import apply_figure_theme
@@ -1797,7 +1819,7 @@ with tab_summary:
 
     st.dataframe(
         df.head(10),
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -1843,7 +1865,7 @@ with tab_summary:
 
             st.dataframe(
                 missing_table,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 
@@ -1865,7 +1887,7 @@ with tab_summary:
 
             st.dataframe(
                 infinite_table,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 
@@ -1949,7 +1971,7 @@ with tab_summary:
 
         st.dataframe(
             descriptive_table,
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -1987,7 +2009,7 @@ with tab_summary:
 
                 st.dataframe(
                     categorical_table,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True
                 )
 
@@ -2050,7 +2072,7 @@ with tab_eda:
 
         st.pyplot(
             numeric_fig,
-            use_container_width=True
+            width="stretch"
         )
 
     else:
@@ -2086,7 +2108,7 @@ with tab_eda:
 
         st.pyplot(
             categorical_fig,
-            use_container_width=True
+            width="stretch"
         )
 
     else:
@@ -2129,7 +2151,7 @@ with tab_eda:
 
             st.pyplot(
                 correlation_fig,
-                use_container_width=True
+                width="stretch"
             )
         else:
             st.info(
@@ -2458,7 +2480,7 @@ with tab_model:
             analyze_clicked = run_button_col.button(
                 tr("Analizar y comparar modelos"),
                 type="primary",
-                use_container_width=True
+                width="stretch"
             )
 
         if analyze_clicked:
@@ -2640,7 +2662,7 @@ with tab_model:
             with st.expander(tr("Ver comparación de los cuatro modelos")):
                 st.dataframe(
                     comparison_table,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True
                 )
 
@@ -2724,7 +2746,7 @@ with tab_model:
                             language=current_language()
                         )
                     ),
-                    use_container_width=True
+                    width="stretch"
                 )
 
                 st.caption(
@@ -2742,7 +2764,7 @@ with tab_model:
                                 language=current_language()
                             )
                         ),
-                        use_container_width=True
+                        width="stretch"
                     )
 
                 with residual_col2:
@@ -2753,7 +2775,7 @@ with tab_model:
                                 language=current_language()
                             )
                         ),
-                        use_container_width=True
+                        width="stretch"
                     )
 
                 st.caption(
@@ -2771,13 +2793,13 @@ with tab_model:
                                 language=current_language()
                             )
                         ),
-                        use_container_width=True
+                        width="stretch"
                     )
 
                 with importance_col2:
                     st.dataframe(
                         localize_generated_table(feature_importance),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True
                     )
 
@@ -2795,7 +2817,7 @@ with tab_model:
 
                 st.dataframe(
                     localize_generated_table(largest_errors),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True
                 )
 
@@ -2808,7 +2830,7 @@ with tab_model:
                 else:
                     st.dataframe(
                         localize_generated_table(subgroup_errors),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True
                     )
 

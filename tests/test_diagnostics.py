@@ -112,10 +112,10 @@ class DiagnosticsTests(unittest.TestCase):
             n_repeats=2
         )
         figures = [
-            plot_actual_vs_predicted(self.table, "target"),
-            plot_residuals(self.table),
-            plot_residual_distribution(self.table),
-            plot_feature_importance(importance)
+            plot_actual_vs_predicted(self.table, "target", language="en"),
+            plot_residuals(self.table, language="en"),
+            plot_residual_distribution(self.table, language="en"),
+            plot_feature_importance(importance, language="en")
         ]
 
         self.assertTrue(all(figure.axes for figure in figures))

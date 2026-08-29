@@ -19,7 +19,9 @@ from src.diagnostics import (
 from src.eda import (
     get_categorical_summary,
     get_numeric_summary,
-    plot_categorical_distribution
+    plot_categorical_distribution,
+    plot_correlation_heatmap,
+    plot_numeric_distribution
 )
 from src.evaluation import (
     evaluate_regression_model,
@@ -79,6 +81,22 @@ class DataPipelineTests(unittest.TestCase):
 
         self.assertIn("Sin dato", labels)
         figure.clear()
+
+    def test_exploration_plots_accept_english_language(self):
+        dataset = pd.DataFrame({
+            "length": [39.1, 39.5, 40.3, np.nan],
+            "mass": [3750, 3800, 3250, 3450]
+        })
+
+        figures = [
+            plot_numeric_distribution(dataset, "length", language="en"),
+            plot_correlation_heatmap(dataset, language="en")
+        ]
+
+        self.assertTrue(all(figure.axes for figure in figures))
+
+        for figure in figures:
+            figure.clear()
 
     def test_fingerprint_changes_when_values_change(self):
         original = pd.DataFrame({"x": [1, 2], "y": [3, 4]})
