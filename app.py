@@ -1034,6 +1034,67 @@ def render_global_styles():
             box-shadow: none;
             transform: translateY(0);
         }
+        .st-key-biodata_language div[role="radiogroup"],
+        .st-key-biodata_theme div[role="radiogroup"] {
+            display: grid !important;
+            gap: 0.2rem !important;
+            max-width: none !important;
+            padding: 0.2rem !important;
+            width: 100% !important;
+        }
+        .st-key-biodata_language div[role="radiogroup"] {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        .st-key-biodata_theme div[role="radiogroup"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+        .st-key-biodata_language div[role="radiogroup"] [role="radio"],
+        .st-key-biodata_theme div[role="radiogroup"] [role="radio"] {
+            align-items: center !important;
+            border: 1px solid transparent !important;
+            border-radius: 8px !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            justify-content: center !important;
+            min-height: 2.75rem !important;
+            min-width: 0 !important;
+            padding: 0.45rem 0.35rem !important;
+            white-space: nowrap !important;
+            width: 100% !important;
+        }
+        .st-key-biodata_language div[role="radiogroup"] [role="radio"] p,
+        .st-key-biodata_language div[role="radiogroup"] [role="radio"] span,
+        .st-key-biodata_theme div[role="radiogroup"] [role="radio"] p,
+        .st-key-biodata_theme div[role="radiogroup"] [role="radio"] span {
+            background: transparent !important;
+            margin: 0 !important;
+            white-space: nowrap !important;
+        }
+        .st-key-biodata_theme div[role="radiogroup"] [role="radio"] p,
+        .st-key-biodata_theme div[role="radiogroup"] [role="radio"] span {
+            font-size: 0.82rem !important;
+        }
+        .st-key-biodata_language,
+        .st-key-biodata_theme {
+            container-type: inline-size;
+            width: 100% !important;
+        }
+        .st-key-biodata_language {
+            container-name: biodata-language-control;
+        }
+        .st-key-biodata_theme {
+            container-name: biodata-theme-control;
+        }
+        @container biodata-language-control (max-width: 12rem) {
+            .st-key-biodata_language div[role="radiogroup"] {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+        }
+        @container biodata-theme-control (max-width: 16rem) {
+            .st-key-biodata_theme div[role="radiogroup"] {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+        }
         .stButton > button:focus-visible,
         .stDownloadButton > button:focus-visible,
         [data-baseweb="tab"]:focus-visible,
@@ -1345,16 +1406,23 @@ def render_theme_overrides(theme_mode):
             background: #e8efea !important;
             border-color: rgba(26, 51, 37, 0.14) !important;
         }
-        div[role="radiogroup"] [role="radio"],
-        div[role="radiogroup"] [role="radio"] p,
-        div[role="radiogroup"] [role="radio"] span {
+        div[role="radiogroup"] [role="radio"] {
             background: #edf3ef !important;
             color: #244033 !important;
         }
-        div[role="radiogroup"] [role="radio"][aria-checked="true"],
+        div[role="radiogroup"] [role="radio"] p,
+        div[role="radiogroup"] [role="radio"] span {
+            background: transparent !important;
+            color: #244033 !important;
+        }
+        div[role="radiogroup"] [role="radio"][aria-checked="true"] {
+            background: rgba(22, 138, 79, 0.13) !important;
+            border-color: rgba(22, 138, 79, 0.42) !important;
+            color: #0f6638 !important;
+        }
         div[role="radiogroup"] [role="radio"][aria-checked="true"] p,
         div[role="radiogroup"] [role="radio"][aria-checked="true"] span {
-            background: rgba(22, 138, 79, 0.13) !important;
+            background: transparent !important;
             color: #0f6638 !important;
         }
         .biodata-brand p,
