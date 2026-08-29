@@ -3,6 +3,9 @@
 
 ENGLISH = {
     "Preferencias": "Preferences",
+    "Personalizá Biodata sin perder el archivo ni los resultados de la sesión.": (
+        "Customize Biodata without losing the file or results stored in the session."
+    ),
     "Idioma": "Language",
     "Apariencia": "Appearance",
     "Automático": "Automatic",
@@ -10,6 +13,18 @@ ENGLISH = {
     "Claro": "Light",
     "Sigue la configuración visual de tu dispositivo.": (
         "Follows your device appearance settings."
+    ),
+    "Manual de uso": "User guide",
+    "Abrir manual de uso": "Open user guide",
+    "Guía para cargar, explorar, modelar e interpretar datos con criterio.": (
+        "A guide to uploading, exploring, modeling and interpreting data responsibly."
+    ),
+    "El contenido se adapta al idioma seleccionado.": (
+        "The content follows the selected language."
+    ),
+    "Descargar manual (.md)": "Download user guide (.md)",
+    "No se pudo cargar el manual. Volvé a intentarlo en unos minutos.": (
+        "The user guide could not be loaded. Please try again in a few minutes."
     ),
     "Espacio de trabajo": "Workspace",
     "Nuevo análisis": "New analysis",
@@ -83,8 +98,8 @@ ENGLISH = {
         "Understand the error, review difficult cases and download a report explaining results, safeguards and limitations."
     ),
     "Para comenzar:": "To begin:",
-    "seleccioná un archivo desde la barra lateral para iniciar el análisis.": (
-        "select a file from the sidebar to start the analysis."
+    "si es tu primera vez, abrí el manual de uso. Después seleccioná un archivo desde la barra lateral para iniciar el análisis.": (
+        "if this is your first visit, open the user guide. Then select a file from the sidebar to begin the analysis."
     ),
     "Nombres de las variables": "Variable names",
     "Este archivo no contiene encabezados. Asigná un nombre a cada columna antes de continuar.": (

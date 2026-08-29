@@ -1,6 +1,7 @@
 from html import escape
 from importlib import reload
 from inspect import signature
+from pathlib import Path
 
 import streamlit as st
 
@@ -335,6 +336,12 @@ def render_preferences():
     st.session_state.setdefault("biodata_theme", "system")
 
     with st.sidebar.expander(tr("Preferencias"), expanded=False):
+        st.caption(
+            tr(
+                "Personalizá Biodata sin perder el archivo ni los resultados de la sesión."
+            )
+        )
+
         st.segmented_control(
             "Idioma / Language",
             options=["es", "en"],
@@ -524,7 +531,7 @@ def render_global_styles():
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {
             background: rgba(61, 220, 132, 0.12);
             border-color: rgba(101, 230, 160, 0.36);
-            min-height: 2.4rem;
+            min-height: 2.75rem;
         }
         .block-container {
             max-width: 1180px;
@@ -1029,7 +1036,11 @@ def render_global_styles():
         }
         .stButton > button:focus-visible,
         .stDownloadButton > button:focus-visible,
-        [data-baseweb="tab"]:focus-visible {
+        [data-baseweb="tab"]:focus-visible,
+        [data-testid="stExpander"] summary:focus-visible,
+        [data-testid="stFileUploaderDropzone"]:focus-within,
+        [data-baseweb="select"]:focus-within,
+        div[role="radiogroup"] [role="radio"]:focus-visible {
             outline: 2px solid #65e6a0;
             outline-offset: 2px;
         }
@@ -1043,7 +1054,7 @@ def render_global_styles():
         }
         [data-baseweb="tab"] {
             border-radius: 9px;
-            min-height: 2.55rem;
+            min-height: 2.75rem;
             padding-left: 1rem;
             padding-right: 1rem;
             transition: background-color 160ms ease, color 160ms ease;
@@ -1074,6 +1085,21 @@ def render_global_styles():
             background: rgba(61, 220, 132, 0.022);
             border-color: rgba(61, 220, 132, 0.24);
             box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+        }
+        [data-testid="stDialog"] [role="dialog"] {
+            border: 1px solid rgba(101, 230, 160, 0.22);
+            border-radius: 18px;
+        }
+        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] {
+            line-height: 1.65;
+        }
+        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] h2 {
+            border-top: 1px solid rgba(236, 245, 240, 0.09);
+            margin-top: 2rem;
+            padding-top: 1.25rem;
+        }
+        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] table {
+            font-size: 0.92rem;
         }
         [data-testid="stVerticalBlockBorderWrapper"] {
             background: rgba(255, 255, 255, 0.012);
@@ -1358,10 +1384,20 @@ def render_theme_overrides(theme_mode):
         .biodata-reading-card,
         [data-testid="stVerticalBlockBorderWrapper"],
         [data-testid="stMetric"],
-        [data-testid="stExpander"] {
+        [data-testid="stExpander"],
+        [data-testid="stDialog"] [role="dialog"] {
             background: rgba(255, 255, 255, 0.72);
             border-color: rgba(26, 51, 37, 0.12);
             box-shadow: 0 10px 30px rgba(30, 64, 45, 0.055);
+        }
+        .stButton > button:focus-visible,
+        .stDownloadButton > button:focus-visible,
+        [data-baseweb="tab"]:focus-visible,
+        [data-testid="stExpander"] summary:focus-visible,
+        [data-testid="stFileUploaderDropzone"]:focus-within,
+        [data-baseweb="select"]:focus-within,
+        div[role="radiogroup"] [role="radio"]:focus-visible {
+            outline-color: #0f6638;
         }
         .biodata-step:nth-child(2) {
             background: linear-gradient(145deg, rgba(22, 138, 79, 0.09), rgba(255, 255, 255, 0.84));
@@ -1573,12 +1609,56 @@ def render_landing_page():
             <span aria-hidden="true"></span>
             <div>
                 <strong>{tr("Para comenzar:")}</strong>
-                {tr("seleccioná un archivo desde la barra lateral para iniciar el análisis.")}
+                {tr("si es tu primera vez, abrí el manual de uso. Después seleccioná un archivo desde la barra lateral para iniciar el análisis.")}
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
+
+
+def get_user_manual():
+    """Lee el manual correspondiente al idioma activo."""
+
+    filename = (
+        "USER_GUIDE.md"
+        if current_language() == "en"
+        else "MANUAL_DE_USO.md"
+    )
+    manual_path = Path(__file__).resolve().parent / "docs" / filename
+    return manual_path.read_text(encoding="utf-8")
+
+
+@st.dialog(tr("Manual de uso"), width="large")
+def render_user_manual_dialog():
+    """Muestra y permite descargar la guía sin abandonar el análisis."""
+
+    st.caption(tr("El contenido se adapta al idioma seleccionado."))
+
+    try:
+        manual_content = get_user_manual()
+    except OSError:
+        st.error(
+            tr(
+                "No se pudo cargar el manual. Volvé a intentarlo en unos minutos."
+            )
+        )
+        return
+
+    st.download_button(
+        tr("Descargar manual (.md)"),
+        data=manual_content,
+        file_name=(
+            "biodata_user_guide.md"
+            if current_language() == "en"
+            else "manual_biodata.md"
+        ),
+        mime="text/markdown",
+        key="download_biodata_manual",
+        width="stretch"
+    )
+    st.divider()
+    st.markdown(manual_content)
 
 language, theme_mode = render_preferences()
 render_global_styles()
@@ -1621,6 +1701,22 @@ with st.sidebar:
             tr("Desactivá esta opción si la primera fila contiene datos y no los nombres de las variables.")
         )
     )
+
+    st.divider()
+
+    st.markdown(f"**{tr('Manual de uso')}**")
+    st.caption(
+        tr(
+            "Guía para cargar, explorar, modelar e interpretar datos con criterio."
+        )
+    )
+
+    if st.button(
+        tr("Abrir manual de uso"),
+        key="open_biodata_manual",
+        width="stretch"
+    ):
+        render_user_manual_dialog()
 
     st.divider()
 

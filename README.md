@@ -9,6 +9,14 @@ comprensibles, auditables y útiles como apoyo a decisiones.
 
 [Abrir Biodata](https://biodata-analysis.streamlit.app/)
 
+## Manual de uso
+
+- [Manual completo en español](docs/MANUAL_DE_USO.md)
+- [Full user guide in English](docs/USER_GUIDE.md)
+
+La guía también puede abrirse y descargarse desde la barra lateral de la
+aplicación, incluso antes de cargar un archivo.
+
 ## Funcionalidades
 
 - Carga de archivos CSV, DATA y TXT, con o sin encabezados.
