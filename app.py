@@ -1449,11 +1449,31 @@ def render_theme_overrides(theme_mode):
             border-color: rgba(26, 51, 37, 0.12);
         }
         [data-baseweb="tab"] {
-            color: rgba(27, 45, 35, 0.76);
+            color: #33483c !important;
+        }
+        [data-baseweb="tab"] p,
+        [data-baseweb="tab"] span {
+            color: #33483c !important;
         }
         [data-baseweb="tab"][aria-selected="true"] {
             background: rgba(22, 138, 79, 0.10);
-            color: #14251b;
+            color: #0f6d3c !important;
+        }
+        [data-baseweb="tab"][aria-selected="true"] p,
+        [data-baseweb="tab"][aria-selected="true"] span {
+            color: #0f6d3c !important;
+        }
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetricLabel"] *,
+        [data-testid="stMetricValue"],
+        [data-testid="stMetricValue"] * {
+            color: #18221c !important;
+            -webkit-text-fill-color: #18221c !important;
+        }
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetricLabel"] * {
+            color: #405248 !important;
+            -webkit-text-fill-color: #405248 !important;
         }
         [data-baseweb="select"] > div,
         [data-testid="stNumberInputContainer"],
@@ -1462,6 +1482,60 @@ def render_theme_overrides(theme_mode):
             background-color: rgba(255, 255, 255, 0.82) !important;
             border-color: rgba(26, 51, 37, 0.14) !important;
             color: #18221c !important;
+        }
+        [data-baseweb="select"] *,
+        [data-baseweb="input"] input,
+        [data-testid="stNumberInputContainer"] input,
+        [data-testid="stTextArea"] textarea {
+            color: #18221c !important;
+            -webkit-text-fill-color: #18221c !important;
+        }
+        [role="listbox"],
+        [role="option"] {
+            background-color: #ffffff !important;
+            color: #18221c !important;
+        }
+        [role="option"]:hover,
+        [role="option"][aria-selected="true"] {
+            background-color: #e6f3eb !important;
+            color: #0f6638 !important;
+        }
+        button[aria-label^="Help for"],
+        button[aria-label^="Help for"] svg {
+            color: #365343 !important;
+            fill: currentColor !important;
+        }
+        [data-testid="stAlertContainer"]:has([data-testid="stAlertContentSuccess"]) {
+            background-color: #dff5e8 !important;
+        }
+        [data-testid="stAlertContentSuccess"],
+        [data-testid="stAlertContentSuccess"] * {
+            color: #155b38 !important;
+            -webkit-text-fill-color: #155b38 !important;
+        }
+        [data-testid="stAlertContainer"]:has([data-testid="stAlertContentInfo"]) {
+            background-color: #e3f0f7 !important;
+        }
+        [data-testid="stAlertContentInfo"],
+        [data-testid="stAlertContentInfo"] * {
+            color: #174a66 !important;
+            -webkit-text-fill-color: #174a66 !important;
+        }
+        [data-testid="stAlertContainer"]:has([data-testid="stAlertContentWarning"]) {
+            background-color: #fff3cd !important;
+        }
+        [data-testid="stAlertContentWarning"],
+        [data-testid="stAlertContentWarning"] * {
+            color: #664d03 !important;
+            -webkit-text-fill-color: #664d03 !important;
+        }
+        [data-testid="stAlertContainer"]:has([data-testid="stAlertContentError"]) {
+            background-color: #fde7e9 !important;
+        }
+        [data-testid="stAlertContentError"],
+        [data-testid="stAlertContentError"] * {
+            color: #7d1d24 !important;
+            -webkit-text-fill-color: #7d1d24 !important;
         }
         [data-testid="stDataFrame"] {
             background: #ffffff;
