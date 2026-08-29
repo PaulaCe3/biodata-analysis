@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from src.i18n import translate
+
 def get_numeric_summary(df):
     """
     Genera un resumen estadístico de las variables numéricas.
@@ -80,7 +82,7 @@ def get_correlation_matrix(df):
 
     return correlation_matrix
 
-def plot_numeric_distribution(df, column, bins=30):
+def plot_numeric_distribution(df, column, bins=30, language="es"):
     """
     Genera un histograma para una variable numérica.
 
@@ -109,13 +111,18 @@ def plot_numeric_distribution(df, column, bins=30):
         edgecolor="black"
     )
 
-    ax.set_title(f"Distribución de {column}")
+    ax.set_title(translate("Distribución de {column}", language, column=column))
     ax.set_xlabel(column)
-    ax.set_ylabel("Frecuencia")
+    ax.set_ylabel(translate("Frecuencia", language))
 
     return fig
 
-def plot_categorical_distribution(df, column, max_categories=30):
+def plot_categorical_distribution(
+    df,
+    column,
+    max_categories=30,
+    language="es"
+):
     """
     Genera un gráfico de barras para una variable categórica.
 
@@ -143,7 +150,7 @@ def plot_categorical_distribution(df, column, max_categories=30):
     )
 
     category_labels = [
-        "Sin dato" if pd.isna(value) else str(value)
+        translate("Sin dato", language) if pd.isna(value) else str(value)
         for value in counts.index
     ]
 
@@ -155,13 +162,13 @@ def plot_categorical_distribution(df, column, max_categories=30):
         edgecolor="black"
     )
 
-    ax.set_title(f"Distribución de {column}")
+    ax.set_title(translate("Distribución de {column}", language, column=column))
     ax.set_xlabel(column)
-    ax.set_ylabel("Frecuencia")
+    ax.set_ylabel(translate("Frecuencia", language))
 
     return fig
 
-def plot_correlation_heatmap(df):
+def plot_correlation_heatmap(df, language="es"):
     """
     Genera un mapa de calor de correlaciones entre variables numéricas.
 
@@ -190,7 +197,7 @@ def plot_correlation_heatmap(df):
     fig.colorbar(
         image,
         ax=ax,
-        label="Correlación"
+        label=translate("Correlación", language)
     )
 
     ax.set_xticks(range(len(correlation_matrix.columns)))
@@ -213,7 +220,7 @@ def plot_correlation_heatmap(df):
                 va="center"
             )
 
-    ax.set_title("Mapa de calor de correlaciones")
+    ax.set_title(translate("Mapa de calor de correlaciones", language))
 
     fig.tight_layout()
 

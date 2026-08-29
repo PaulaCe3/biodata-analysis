@@ -4,6 +4,8 @@ import pandas as pd
 
 from sklearn.inspection import permutation_importance
 
+from src.i18n import translate
+
 
 def build_prediction_table(X_test, y_true, y_pred):
     """Construye una tabla auditable con valores reales y predichos."""
@@ -132,7 +134,8 @@ def calculate_subgroup_errors(
 def build_diagnostic_warnings(
     evaluation_summary,
     prediction_table,
-    subgroup_errors=None
+    subgroup_errors=None,
+    language="es"
 ):
     """Genera advertencias explicables a partir de reglas transparentes."""
 
@@ -142,13 +145,18 @@ def build_diagnostic_warnings(
     p90_error = float(prediction_table["error_absoluto"].quantile(0.90))
 
     if mae > 0 and abs(mean_residual) > mae * 0.10:
-        direction = "subestimar" if mean_residual > 0 else "sobreestimar"
+        direction = translate(
+            "subestimar" if mean_residual > 0 else "sobreestimar",
+            language
+        )
         warnings.append(
             {
-                "title": "Posible sesgo sistemático",
-                "message": (
-                    f"El residuo promedio es {mean_residual:.3f}. El modelo "
-                    f"muestra una tendencia general a {direction} los valores."
+                "title": translate("Posible sesgo sistemático", language),
+                "message": translate(
+                    "El residuo promedio es {residual:.3f}. El modelo muestra una tendencia general a {direction} los valores.",
+                    language,
+                    residual=mean_residual,
+                    direction=direction
                 )
             }
         )
@@ -156,11 +164,11 @@ def build_diagnostic_warnings(
     if mae > 0 and p90_error > mae * 2:
         warnings.append(
             {
-                "title": "Errores extremos relevantes",
-                "message": (
-                    f"El 10 % de los casos con mayor error supera "
-                    f"aproximadamente {p90_error:.3f} unidades. Conviene "
-                    "revisarlos antes de tomar decisiones de alto impacto."
+                "title": translate("Errores extremos relevantes", language),
+                "message": translate(
+                    "El 10 % de los casos con mayor error supera aproximadamente {error:.3f} unidades. Conviene revisarlos antes de tomar decisiones de alto impacto.",
+                    language,
+                    error=p90_error
                 )
             }
         )
@@ -174,11 +182,16 @@ def build_diagnostic_warnings(
                 worst_group = feature_data.loc[feature_data["mae"].idxmax()]
                 warnings.append(
                     {
-                        "title": f"Diferencia de rendimiento en {feature}",
-                        "message": (
-                            f"El grupo {worst_group['grupo']} presenta el mayor "
-                            f"MAE ({worst_group['mae']:.3f}). Revisá si esta "
-                            "diferencia es aceptable para el uso previsto."
+                        "title": translate(
+                            "Diferencia de rendimiento en {feature}",
+                            language,
+                            feature=feature
+                        ),
+                        "message": translate(
+                            "El grupo {group} presenta el mayor MAE ({mae:.3f}). Revisá si esta diferencia es aceptable para el uso previsto.",
+                            language,
+                            group=worst_group["grupo"],
+                            mae=worst_group["mae"]
                         )
                     }
                 )
@@ -209,7 +222,7 @@ def summarize_diagnostics(
     }
 
 
-def plot_actual_vs_predicted(prediction_table, target_name):
+def plot_actual_vs_predicted(prediction_table, target_name, language="es"):
     """Grafica valores reales frente a valores predichos."""
 
     real = prediction_table["valor_real"]
@@ -220,16 +233,20 @@ def plot_actual_vs_predicted(prediction_table, target_name):
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.scatter(real, predicted, alpha=0.55, edgecolors="none")
     ax.plot([lower, upper], [lower, upper], linestyle="--", color="tab:red")
-    ax.set_xlabel(f"Valor real de {target_name}")
-    ax.set_ylabel(f"Predicción de {target_name}")
-    ax.set_title("Valores reales frente a predicciones")
+    ax.set_xlabel(translate(
+        "Valor real de {target}", language, target=target_name
+    ))
+    ax.set_ylabel(translate(
+        "Predicción de {target}", language, target=target_name
+    ))
+    ax.set_title(translate("Valores reales frente a predicciones", language))
     ax.grid(alpha=0.2)
     fig.tight_layout()
 
     return fig
 
 
-def plot_residuals(prediction_table):
+def plot_residuals(prediction_table, language="es"):
     """Grafica residuos frente a predicciones."""
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -240,16 +257,16 @@ def plot_residuals(prediction_table):
         edgecolors="none"
     )
     ax.axhline(0, linestyle="--", color="tab:red")
-    ax.set_xlabel("Valor predicho")
-    ax.set_ylabel("Residuo (real − predicción)")
-    ax.set_title("Errores a lo largo de las predicciones")
+    ax.set_xlabel(translate("Valor predicho", language))
+    ax.set_ylabel(translate("Residuo (real − predicción)", language))
+    ax.set_title(translate("Errores a lo largo de las predicciones", language))
     ax.grid(alpha=0.2)
     fig.tight_layout()
 
     return fig
 
 
-def plot_residual_distribution(prediction_table):
+def plot_residual_distribution(prediction_table, language="es"):
     """Grafica la distribución de los residuos."""
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -261,15 +278,15 @@ def plot_residual_distribution(prediction_table):
         edgecolor="white"
     )
     ax.axvline(0, linestyle="--", color="tab:red")
-    ax.set_xlabel("Residuo (real − predicción)")
-    ax.set_ylabel("Cantidad de casos")
-    ax.set_title("Distribución de errores")
+    ax.set_xlabel(translate("Residuo (real − predicción)", language))
+    ax.set_ylabel(translate("Cantidad de casos", language))
+    ax.set_title(translate("Distribución de errores", language))
     fig.tight_layout()
 
     return fig
 
 
-def plot_feature_importance(feature_importance, top_n=12):
+def plot_feature_importance(feature_importance, top_n=12, language="es"):
     """Grafica las variables con mayor importancia predictiva."""
 
     plot_data = (
@@ -287,9 +304,9 @@ def plot_feature_importance(feature_importance, top_n=12):
         alpha=0.8
     )
     ax.axvline(0, color="gray", linewidth=0.8)
-    ax.set_xlabel("Aumento del MAE al alterar la variable")
-    ax.set_ylabel("Variable")
-    ax.set_title("Importancia predictiva por permutación")
+    ax.set_xlabel(translate("Aumento del MAE al alterar la variable", language))
+    ax.set_ylabel(translate("Variable", language))
+    ax.set_title(translate("Importancia predictiva por permutación", language))
     fig.tight_layout()
 
     return fig

@@ -4,8 +4,8 @@ from src.report import build_full_report
 
 
 class ReportTests(unittest.TestCase):
-    def test_full_report_contains_context_and_diagnostics(self):
-        report = build_full_report(
+    def build_report(self, language="es"):
+        return build_full_report(
             dataset_profile={
                 "n_rows": 100,
                 "n_columns": 3,
@@ -44,12 +44,24 @@ class ReportTests(unittest.TestCase):
                 "decision": "revisar casos",
                 "acceptable_error": 1.2,
                 "impact": "Medio"
-            }
+            },
+            language=language
         )
+
+    def test_full_report_contains_context_and_diagnostics(self):
+        report = self.build_report()
 
         self.assertIn("CONTEXTO DEL ANÁLISIS", report)
         self.assertIn("DIAGNÓSTICO DEL MODELO", report)
         self.assertIn("priorizar casos", report)
+
+    def test_full_report_can_be_generated_in_english(self):
+        report = self.build_report(language="en")
+
+        self.assertIn("ANALYSIS CONTEXT", report)
+        self.assertIn("MODEL DIAGNOSTICS", report)
+        self.assertIn("PLAIN-LANGUAGE INTERPRETATION", report)
+        self.assertIn("Gradient Boosting", report)
 
 
 if __name__ == "__main__":

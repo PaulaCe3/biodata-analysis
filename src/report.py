@@ -375,7 +375,7 @@ def build_diagnostics_section(diagnostics_summary):
     return "\n".join(lines)
 
 
-def build_full_report(
+def build_full_report_english(
     dataset_profile,
     quality_report,
     model_comparison,
@@ -383,6 +383,238 @@ def build_full_report(
     target_column=None,
     diagnostics_summary=None,
     user_context=None
+):
+    """Builds the downloadable report in English."""
+
+    target_name = str(target_column or "the target variable")
+    missing_values = quality_report["missing_values"]
+    infinite_values = quality_report.get("infinite_values", {})
+    total_missing = sum(missing_values.values())
+    total_infinite = sum(infinite_values.values())
+    columns_text = ", ".join(str(column) for column in dataset_profile["columns"])
+
+    profile_lines = [
+        "DATASET PROFILE",
+        "",
+        f"Rows: {dataset_profile['n_rows']}",
+        f"Columns: {dataset_profile['n_columns']}",
+        f"Variables: {columns_text}"
+    ]
+
+    quality_lines = [
+        "DATA QUALITY",
+        "",
+        f"Total missing values: {total_missing}",
+        f"Infinite numeric values: {total_infinite}",
+        f"Duplicate rows: {quality_report['duplicate_rows']}",
+        "",
+        "Missing values by variable:"
+    ]
+    quality_lines.extend(
+        f"- {column}: {count}" for column, count in missing_values.items()
+    )
+    if total_infinite:
+        quality_lines.extend(["", "Infinite values by variable:"])
+        quality_lines.extend(
+            f"- {column}: {count}"
+            for column, count in infinite_values.items()
+            if count
+        )
+
+    sections = ["\n".join(profile_lines), "\n".join(quality_lines)]
+
+    if user_context:
+        context_labels = {
+            "goal": "Goal",
+            "audience": "Audience",
+            "decision": "Decision to support",
+            "acceptable_error": "Tolerable error",
+            "impact": "Decision impact"
+        }
+        context_lines = ["ANALYSIS CONTEXT", ""]
+        for key, label in context_labels.items():
+            value = user_context.get(key)
+            if value not in (None, "", 0, 0.0):
+                context_lines.append(
+                    f"{label}: {translate(str(value), 'en')}"
+                )
+        if len(context_lines) == 2:
+            context_lines.append("No additional context was provided.")
+        sections.append("\n".join(context_lines))
+
+    comparison_lines = ["MODEL COMPARISON", ""]
+    for name, result in model_comparison.items():
+        comparison_lines.append(
+            f"- {model_label(name, 'en')}: mean MAE = {result['mean_mae']:.4f}"
+        )
+    best_model = min(
+        model_comparison,
+        key=lambda name: model_comparison[name]["mean_mae"]
+    )
+    comparison_lines.extend([
+        "",
+        f"Best model by MAE: {model_label(best_model, 'en')}"
+    ])
+    sections.append("\n".join(comparison_lines))
+
+    evaluation_lines = [
+        "MODEL EVALUATION",
+        "",
+        f"MAE: {evaluation_summary['mae']:.4f}",
+        f"RMSE: {evaluation_summary['rmse']:.4f}",
+        f"R²: {evaluation_summary['r2']:.4f}",
+        f"Number of predictions: {evaluation_summary['n_predictions']}",
+        f"Mean residual: {evaluation_summary['mean_residual']:.4f}",
+        f"Minimum residual: {evaluation_summary['min_residual']:.4f}",
+        f"Maximum residual: {evaluation_summary['max_residual']:.4f}"
+    ]
+    sections.append("\n".join(evaluation_lines))
+
+    if diagnostics_summary:
+        diagnostic_lines = [
+            "MODEL DIAGNOSTICS",
+            "",
+            (
+                "Median absolute error: "
+                f"{diagnostics_summary['median_absolute_error']:.4f}"
+            ),
+            (
+                "90th percentile absolute error: "
+                f"{diagnostics_summary['p90_absolute_error']:.4f}"
+            ),
+            (
+                "Largest observed absolute error: "
+                f"{diagnostics_summary['max_absolute_error']:.4f}"
+            ),
+            "",
+            "Variables with the highest predictive importance:"
+        ]
+        top_features = diagnostics_summary.get("top_features", [])
+        if top_features:
+            diagnostic_lines.extend(
+                f"- {feature['variable']}: {feature['importancia']:.4f}"
+                for feature in top_features
+            )
+        else:
+            diagnostic_lines.append("- No positive importance values were identified.")
+        diagnostic_lines.extend(["", "Automatic warnings:"])
+        warnings = diagnostics_summary.get("warnings", [])
+        if warnings:
+            diagnostic_lines.extend(
+                f"- {warning['title']}: {warning['message']}"
+                for warning in warnings
+            )
+        else:
+            diagnostic_lines.append("- No warnings were triggered by the current rules.")
+        diagnostic_lines.extend([
+            "",
+            "Permutation importance measures predictive usefulness. It does not imply causality."
+        ])
+        sections.append("\n".join(diagnostic_lines))
+
+    mae = evaluation_summary["mae"]
+    rmse = evaluation_summary["rmse"]
+    r2 = evaluation_summary["r2"]
+
+    if 0 <= r2 <= 1:
+        r2_text = (
+            f"The model explains approximately {r2 * 100:.1f}% of the observed "
+            f"variation in {target_name}. The remaining {(1 - r2) * 100:.1f}% "
+            "depends on information unavailable to the model or variation that "
+            "is difficult to predict."
+        )
+    else:
+        r2_text = (
+            "R² is negative: on this test set, the model performs worse than a "
+            "prediction based on the mean value."
+        )
+
+    if rmse > mae * 1.25:
+        rmse_text = (
+            f"RMSE ({rmse:.4f}) is higher than MAE, suggesting that some large "
+            "errors deserve specific review."
+        )
+    else:
+        rmse_text = (
+            f"RMSE ({rmse:.4f}) remains relatively close to MAE, suggesting "
+            "that large errors do not dominate the result."
+        )
+
+    tolerance_text = (
+        f"First define what error is acceptable. If a difference of {mae:.4f} "
+        f"units in {target_name} can change an important decision, the model "
+        "should not make that decision on its own."
+    )
+    if user_context:
+        acceptable_error = user_context.get("acceptable_error")
+        if acceptable_error is not None and acceptable_error > 0:
+            if mae <= acceptable_error:
+                tolerance_text = (
+                    f"MAE ({mae:.4f}) is within the declared tolerable error "
+                    f"({acceptable_error:.4f}). Even so, review extreme errors "
+                    "and subgroups before using the model."
+                )
+            else:
+                tolerance_text = (
+                    f"MAE ({mae:.4f}) exceeds the declared tolerable error "
+                    f"({acceptable_error:.4f}). Improve the model or limit its "
+                    "use before it supports this decision."
+                )
+
+    interpretation_lines = [
+        "PLAIN-LANGUAGE INTERPRETATION",
+        "",
+        f"The selected model was {model_label(best_model, 'en')}.",
+        "",
+        "What do the results mean?",
+        (
+            f"- On average, predictions differ from the actual {target_name} "
+            f"by {mae:.4f} units. This is the practical meaning of MAE."
+        ),
+        f"- {rmse_text}",
+        f"- {r2_text}",
+        "",
+        "How should this information support decisions?",
+        f"- {tolerance_text}",
+        (
+            "- Use the model to help rank, prioritize or review cases. A person "
+            "should confirm high-impact decisions."
+        ),
+        (
+            "- Review errors across relevant groups and verify that no group "
+            "systematically receives worse predictions."
+        ),
+        (
+            "- Validate performance with new data from another time or context. "
+            "Update the data or model if performance declines."
+        ),
+        "",
+        "IMPORTANT LIMITATIONS",
+        "- Average metrics can hide extreme cases or subgroup differences.",
+        (
+            "- This is an internal test split and does not guarantee the same "
+            "performance in another population, laboratory, region or period."
+        ),
+        "- Predictive patterns do not establish causality.",
+        (
+            "- Global feature importance does not explain each individual "
+            "prediction or establish causality."
+        )
+    ]
+    sections.append("\n".join(interpretation_lines))
+
+    return ("\n\n" + "=" * 50 + "\n\n").join(sections)
+
+
+def build_full_report(
+    dataset_profile,
+    quality_report,
+    model_comparison,
+    evaluation_summary,
+    target_column=None,
+    diagnostics_summary=None,
+    user_context=None,
+    language="es"
 ):
     """
     Genera un reporte completo con los principales resultados
@@ -417,6 +649,17 @@ def build_full_report(
         Reporte completo del análisis.
     """
 
+    if language == "en":
+        return build_full_report_english(
+            dataset_profile,
+            quality_report,
+            model_comparison,
+            evaluation_summary,
+            target_column=target_column,
+            diagnostics_summary=diagnostics_summary,
+            user_context=user_context
+        )
+
     sections = [
         build_dataset_profile_section(dataset_profile),
         build_data_quality_section(quality_report),
@@ -445,4 +688,6 @@ def build_full_report(
     report = ("\n\n" + "=" * 50 + "\n\n").join(sections)
 
     return report
+
+from src.i18n import model_label, translate
 

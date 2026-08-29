@@ -152,8 +152,8 @@ _startup_loader.markdown(
                 <path d="M6.5 16.2c0-3.1 2.5-5.4 5.5-5.4s5.5 2.3 5.5 5.4c0 2-1.5 3.3-3.3 3.3-.9 0-1.5-.5-2.2-.5s-1.3.5-2.2.5c-1.8 0-3.3-1.3-3.3-3.3Z" />
             </svg>
         </div>
-        <strong>Preparando Biodata</strong>
-        <small>Cargando el espacio de análisis</small>
+        <strong>Biodata</strong>
+        <small>Análisis de datos · Data analysis</small>
     </div>
     """,
     unsafe_allow_html=True
@@ -206,34 +206,140 @@ from src.diagnostics import (
     summarize_diagnostics
 )
 from src.report import build_full_report
+from src.i18n import model_label, translate
+from src.plot_style import apply_figure_theme
 
 
-def format_variable_label(column_name):
+def current_language():
+    """Devuelve el idioma activo de la interfaz."""
+
+    return st.session_state.get("biodata_language", "es")
+
+
+def tr(text, **values):
+    """Atajo para localizar textos visibles de la aplicación."""
+
+    return translate(text, current_language(), **values)
+
+
+def localize_generated_table(table):
+    """Traduce solo columnas generadas por Biodata, no las del dataset."""
+
+    if current_language() != "en":
+        return table
+
+    return table.rename(
+        columns={
+            "fila_original": "original_row",
+            "valor_real": "actual_value",
+            "prediccion": "prediction",
+            "residuo": "residual",
+            "error_absoluto": "absolute_error",
+            "variable": "variable",
+            "importancia": "importance",
+            "desviacion": "std_deviation",
+            "grupo": "group",
+            "casos": "cases",
+            "mae": "mae",
+            "residuo_promedio": "mean_residual"
+        }
+    )
+
+
+def effective_theme():
+    """Resuelve el tema visual efectivo, incluido el modo automático."""
+
+    selected_theme = st.session_state.get("biodata_theme", "system")
+    if selected_theme != "system":
+        return selected_theme
+
+    context_theme = st.context.theme.get("type")
+    return context_theme if context_theme in ("light", "dark") else "dark"
+
+
+def themed_figure(figure):
+    """Aplica el tema activo a una figura antes de mostrarla."""
+
+    return apply_figure_theme(figure, effective_theme())
+
+
+def format_variable_label(column_name, language_code=None):
     """Convierte nombres técnicos en etiquetas legibles sin alterar los datos."""
 
     original_name = str(column_name).strip()
+    language_code = language_code or current_language()
     known_labels = {
-        "sex": "Sexo",
-        "length": "Longitud",
-        "diameter": "Diámetro",
-        "height": "Altura",
-        "whole_weight": "Peso total",
-        "shucked_weight": "Peso sin concha",
-        "viscera_weight": "Peso de vísceras",
-        "shell_weight": "Peso de la concha",
-        "rings": "Anillos"
+        "es": {
+            "sex": "Sexo",
+            "length": "Longitud",
+            "diameter": "Diámetro",
+            "height": "Altura",
+            "whole_weight": "Peso total",
+            "shucked_weight": "Peso sin concha",
+            "viscera_weight": "Peso de vísceras",
+            "shell_weight": "Peso de la concha",
+            "rings": "Anillos"
+        },
+        "en": {
+            "sex": "Sex",
+            "length": "Length",
+            "diameter": "Diameter",
+            "height": "Height",
+            "whole_weight": "Total weight",
+            "shucked_weight": "Shucked weight",
+            "viscera_weight": "Viscera weight",
+            "shell_weight": "Shell weight",
+            "rings": "Rings"
+        }
     }
 
-    return known_labels.get(
+    return known_labels[language_code].get(
         original_name.lower(),
         original_name.replace("_", " ").strip().capitalize()
     )
 
 
 def format_spanish_number(value, decimals=2):
-    """Muestra números con coma decimal para la interfaz en español."""
+    """Formatea números según el idioma activo."""
 
-    return f"{value:.{decimals}f}".replace(".", ",")
+    formatted = f"{value:.{decimals}f}"
+    return formatted.replace(".", ",") if current_language() == "es" else formatted
+
+
+def render_preferences():
+    """Muestra preferencias globales y conserva su estado en la sesión."""
+
+    st.session_state.setdefault("biodata_language", "es")
+    st.session_state.setdefault("biodata_theme", "system")
+
+    with st.sidebar.expander(tr("Preferencias"), expanded=False):
+        st.segmented_control(
+            "Idioma / Language",
+            options=["es", "en"],
+            format_func=lambda value: "Español" if value == "es" else "English",
+            key="biodata_language"
+        )
+
+        theme_labels = {
+            "system": tr("Automático"),
+            "dark": tr("Oscuro"),
+            "light": tr("Claro")
+        }
+
+        st.segmented_control(
+            tr("Apariencia"),
+            options=["system", "dark", "light"],
+            format_func=lambda value: theme_labels[value],
+            key="biodata_theme"
+        )
+
+        if st.session_state["biodata_theme"] == "system":
+            st.caption(tr("Sigue la configuración visual de tu dispositivo."))
+
+    return (
+        st.session_state["biodata_language"],
+        st.session_state["biodata_theme"]
+    )
 
 
 def render_global_styles():
@@ -461,6 +567,7 @@ def render_global_styles():
             gap: 0.5rem;
             margin-left: auto;
             padding: 0.45rem 0.75rem;
+            white-space: nowrap;
         }
         .biodata-brand-badge span {
             background: var(--biodata-green);
@@ -965,6 +1072,17 @@ def render_global_styles():
             border-radius: 13px;
             min-height: 112px;
             padding: 0.85rem 0.95rem;
+            transition:
+                background-color 180ms ease,
+                border-color 180ms ease,
+                box-shadow 180ms ease,
+                transform 180ms ease;
+        }
+        [data-testid="stMetric"]:hover {
+            background: rgba(61, 220, 132, 0.028);
+            border-color: rgba(61, 220, 132, 0.25);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
         }
         [data-testid="stDataFrame"] {
             border: 1px solid rgba(236, 245, 240, 0.09);
@@ -1115,11 +1233,190 @@ def render_global_styles():
     )
 
 
+def render_theme_overrides(theme_mode):
+    """Aplica un tema claro fijo o adaptado al dispositivo."""
+
+    light_rules = """
+        :root {
+            color-scheme: light;
+            --background-color: #f4f7f5;
+            --secondary-background-color: #eaf0ec;
+            --text-color: #18221c;
+            --primary-color: #168a4f;
+            --biodata-bg: #f4f7f5;
+            --biodata-surface: #ffffff;
+            --biodata-surface-raised: #f8fbf9;
+            --biodata-border: rgba(26, 51, 37, 0.13);
+            --biodata-border-strong: rgba(22, 138, 79, 0.30);
+            --biodata-green: #168a4f;
+            --biodata-green-soft: #137645;
+            --biodata-text: #162019;
+            --biodata-muted: rgba(27, 45, 35, 0.68);
+            --biodata-shadow: 0 22px 54px rgba(30, 64, 45, 0.11);
+        }
+        body,
+        [data-testid="stAppViewContainer"] {
+            color: #18221c;
+        }
+        [data-testid="stAppViewContainer"] {
+            background:
+                radial-gradient(circle at 86% -8%, rgba(22, 138, 79, 0.11), transparent 32rem),
+                radial-gradient(circle at 18% 94%, rgba(73, 151, 105, 0.09), transparent 30rem),
+                linear-gradient(180deg, #f7faf8 0%, #eef4f0 100%);
+        }
+        [data-testid="stHeader"] {
+            background: rgba(247, 250, 248, 0.82);
+            border-bottom-color: rgba(26, 51, 37, 0.08);
+        }
+        [data-testid="stSidebar"] {
+            background:
+                radial-gradient(circle at 10% 4%, rgba(22, 138, 79, 0.10), transparent 15rem),
+                linear-gradient(180deg, #f7faf8 0%, #edf3ef 100%);
+            border-right-color: rgba(26, 51, 37, 0.12);
+            box-shadow: 18px 0 48px rgba(30, 64, 45, 0.08);
+        }
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] span,
+        [data-testid="stSidebar"] small {
+            color: #1b2b21;
+        }
+        details > summary,
+        details > summary:hover {
+            background: rgba(255, 255, 255, 0.76) !important;
+            color: #1b2b21 !important;
+        }
+        details > summary p,
+        details > summary span {
+            color: #1b2b21 !important;
+        }
+        div[role="radiogroup"] {
+            background: #e8efea !important;
+            border-color: rgba(26, 51, 37, 0.14) !important;
+        }
+        div[role="radiogroup"] [role="radio"],
+        div[role="radiogroup"] [role="radio"] p,
+        div[role="radiogroup"] [role="radio"] span {
+            background: #edf3ef !important;
+            color: #244033 !important;
+        }
+        div[role="radiogroup"] [role="radio"][aria-checked="true"],
+        div[role="radiogroup"] [role="radio"][aria-checked="true"] p,
+        div[role="radiogroup"] [role="radio"][aria-checked="true"] span {
+            background: rgba(22, 138, 79, 0.13) !important;
+            color: #0f6638 !important;
+        }
+        .biodata-brand p,
+        .biodata-hero-copy > p,
+        .biodata-step p,
+        .biodata-result-overview-card span,
+        .biodata-result-overview-card small,
+        .biodata-test-metric span,
+        .biodata-test-metric small {
+            color: rgba(27, 45, 35, 0.68);
+        }
+        .biodata-brand-badge,
+        .biodata-hero-capabilities span {
+            background: rgba(22, 138, 79, 0.045);
+            border-color: rgba(26, 51, 37, 0.12);
+            color: rgba(27, 45, 35, 0.78);
+        }
+        .biodata-hero {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 249, 246, 0.97));
+            border-color: rgba(26, 51, 37, 0.13);
+        }
+        .biodata-hero-trust,
+        .biodata-journey-heading,
+        .biodata-step,
+        .biodata-result-overview-card,
+        .biodata-summary-card,
+        .biodata-reading-card,
+        [data-testid="stVerticalBlockBorderWrapper"],
+        [data-testid="stMetric"],
+        [data-testid="stExpander"] {
+            background: rgba(255, 255, 255, 0.72);
+            border-color: rgba(26, 51, 37, 0.12);
+            box-shadow: 0 10px 30px rgba(30, 64, 45, 0.055);
+        }
+        .biodata-step:nth-child(2) {
+            background: linear-gradient(145deg, rgba(22, 138, 79, 0.09), rgba(255, 255, 255, 0.84));
+            border-color: rgba(22, 138, 79, 0.24);
+        }
+        .biodata-trust-label,
+        .biodata-trust-item small,
+        .biodata-card-label,
+        .biodata-card-helper {
+            color: rgba(27, 45, 35, 0.62) !important;
+        }
+        .biodata-trust-item strong,
+        .biodata-result-overview-card strong,
+        .biodata-test-metric strong,
+        .biodata-card-value,
+        .biodata-reading-card h5,
+        .biodata-reading-card p {
+            color: #18221c !important;
+        }
+        .biodata-start-note {
+            background: rgba(22, 138, 79, 0.07);
+            border-color: rgba(22, 138, 79, 0.18);
+            color: #20352a;
+        }
+        .biodata-model-flow {
+            border-color: rgba(26, 51, 37, 0.12);
+        }
+        .biodata-model-flow-item,
+        .biodata-model-flow-item:hover {
+            color: rgba(27, 45, 35, 0.82);
+        }
+        [data-baseweb="tab-list"] {
+            background: rgba(255, 255, 255, 0.70);
+            border-color: rgba(26, 51, 37, 0.12);
+        }
+        [data-baseweb="tab"] {
+            color: rgba(27, 45, 35, 0.76);
+        }
+        [data-baseweb="tab"][aria-selected="true"] {
+            background: rgba(22, 138, 79, 0.10);
+            color: #14251b;
+        }
+        [data-baseweb="select"] > div,
+        [data-testid="stNumberInputContainer"],
+        [data-testid="stTextArea"] textarea,
+        [data-testid="stFileUploaderDropzone"] {
+            background-color: rgba(255, 255, 255, 0.82) !important;
+            border-color: rgba(26, 51, 37, 0.14) !important;
+            color: #18221c !important;
+        }
+        [data-testid="stDataFrame"] {
+            background: #ffffff;
+            border-color: rgba(26, 51, 37, 0.12);
+        }
+        .stButton > button:not([kind="primary"]),
+        .stDownloadButton > button:not([kind="primary"]) {
+            background: rgba(255, 255, 255, 0.84);
+            border-color: rgba(26, 51, 37, 0.16);
+            color: #18221c;
+        }
+    """
+
+    if theme_mode == "light":
+        rules = light_rules
+    elif theme_mode == "system":
+        rules = f"@media (prefers-color-scheme: light) {{{light_rules}}}"
+    else:
+        rules = ""
+
+    st.markdown(f"<style>{rules}</style>", unsafe_allow_html=True)
+
+
 def render_brand_header():
     """Muestra el encabezado compacto de la aplicación."""
 
     st.markdown(
-        """
+        f"""
         <div class="biodata-brand">
             <div class="biodata-brand-mark" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1131,11 +1428,11 @@ def render_brand_header():
             </div>
             <div>
                 <h1>Biodata</h1>
-                <p>Análisis de datos y modelos predictivos</p>
+                <p>{tr("Análisis de datos y modelos predictivos")}</p>
             </div>
             <div class="biodata-brand-badge">
                 <span aria-hidden="true"></span>
-                Modelos predictivos integrados
+                {tr("Modelos predictivos integrados")}
             </div>
         </div>
         """,
@@ -1147,52 +1444,49 @@ def render_landing_page():
     """Muestra una portada útil mientras todavía no hay un dataset cargado."""
 
     st.markdown(
-        """
+        f"""
         <section class="biodata-hero">
             <div class="biodata-hero-copy">
-                <div class="biodata-kicker">Análisis de datos y predicción</div>
-                <h2>Entendé tus datos antes de tomar decisiones.</h2>
+                <div class="biodata-kicker">{tr("Análisis de datos y predicción")}</div>
+                <h2>{tr("Entendé tus datos antes de tomar decisiones.")}</h2>
                 <p>
-                    Biodata combina el análisis exploratorio con modelos predictivos.
-                    Estos modelos usan aprendizaje automático (machine learning)
-                    para detectar patrones y estimar resultados con datos nuevos.
+                    {tr("Biodata combina el análisis exploratorio con modelos predictivos. Estos modelos usan aprendizaje automático (machine learning) para detectar patrones y estimar resultados con datos nuevos.")}
                 </p>
-                <div class="biodata-hero-capabilities" aria-label="Etapas disponibles">
-                    <span>Calidad de datos</span>
-                    <span>Exploración visual</span>
-                    <span>Modelos predictivos</span>
+                <div class="biodata-hero-capabilities" aria-label="{tr('Etapas disponibles')}">
+                    <span>{tr("Calidad de datos")}</span>
+                    <span>{tr("Exploración visual")}</span>
+                    <span>{tr("Modelos predictivos")}</span>
                 </div>
             </div>
             <aside class="biodata-hero-trust">
-                <div class="biodata-trust-label">Diseñado para trabajar con criterio</div>
+                <div class="biodata-trust-label">{tr("Diseñado para trabajar con criterio")}</div>
                 <div class="biodata-trust-item">
                     <span>01</span>
                     <div>
-                        <strong>Prueba separada</strong>
-                        <small>El resultado final se evalúa con datos reservados.</small>
+                        <strong>{tr("Prueba separada")}</strong>
+                        <small>{tr("El resultado final se evalúa con datos reservados.")}</small>
                     </div>
                 </div>
                 <div class="biodata-trust-item">
                     <span>02</span>
                     <div>
-                        <strong>Errores visibles</strong>
-                        <small>Las métricas se traducen a una lectura práctica.</small>
+                        <strong>{tr("Errores visibles")}</strong>
+                        <small>{tr("Las métricas se traducen a una lectura práctica.")}</small>
                     </div>
                 </div>
                 <div class="biodata-trust-item">
                     <span>03</span>
                     <div>
-                        <strong>Límites explícitos</strong>
-                        <small>El informe aclara qué no puede concluir el modelo.</small>
+                        <strong>{tr("Límites explícitos")}</strong>
+                        <small>{tr("El informe aclara qué no puede concluir el modelo.")}</small>
                     </div>
                 </div>
             </aside>
         </section>
         <div class="biodata-journey-heading">
-            <h3>Un proceso claro, desde los datos hasta la decisión.</h3>
+            <h3>{tr("Un proceso claro, desde los datos hasta la decisión.")}</h3>
             <p>
-                Primero se comprenden los datos, después se comparan modelos y al
-                final se traducen sus resultados, errores y limitaciones.
+                {tr("Primero se comprenden los datos, después se comparan modelos y al final se traducen sus resultados, errores y limitaciones.")}
             </p>
         </div>
         <div class="biodata-steps">
@@ -1208,11 +1502,10 @@ def render_landing_page():
                         </svg>
                     </div>
                 </div>
-                <div class="biodata-step-tag">Análisis de datos</div>
-                <h3>Prepará y comprendé</h3>
+                <div class="biodata-step-tag">{tr("Análisis de datos")}</div>
+                <h3>{tr("Prepará y comprendé")}</h3>
                 <p>
-                    Revisá faltantes, duplicados, tipos de variables y
-                    distribuciones antes de entrenar un modelo.
+                    {tr("Revisá faltantes, duplicados, tipos de variables y distribuciones antes de entrenar un modelo.")}
                 </p>
             </article>
             <article class="biodata-step">
@@ -1229,11 +1522,10 @@ def render_landing_page():
                         </svg>
                     </div>
                 </div>
-                <div class="biodata-step-tag">Modelos predictivos</div>
-                <h3>Entrená y compará</h3>
+                <div class="biodata-step-tag">{tr("Modelos predictivos")}</div>
+                <h3>{tr("Entrená y compará")}</h3>
                 <p>
-                    Biodata prueba varias alternativas para aprender patrones. Las
-                    compara de forma justa y evalúa la mejor con datos que no vio.
+                    {tr("Biodata prueba varias alternativas para aprender patrones. Las compara de forma justa y evalúa la mejor con datos que no vio.")}
                 </p>
             </article>
             <article class="biodata-step">
@@ -1248,26 +1540,27 @@ def render_landing_page():
                         </svg>
                     </div>
                 </div>
-                <div class="biodata-step-tag">Evaluación e informe</div>
-                <h3>Interpretá y decidí</h3>
+                <div class="biodata-step-tag">{tr("Evaluación e informe")}</div>
+                <h3>{tr("Interpretá y decidí")}</h3>
                 <p>
-                    Entendé el error, revisá los casos difíciles y descargá un
-                    informe que explique resultados, controles y limitaciones.
+                    {tr("Entendé el error, revisá los casos difíciles y descargá un informe que explique resultados, controles y limitaciones.")}
                 </p>
             </article>
         </div>
         <div class="biodata-start-note">
             <span aria-hidden="true"></span>
             <div>
-                <strong>Para comenzar:</strong> seleccioná un archivo desde la
-                barra lateral para iniciar el análisis.
+                <strong>{tr("Para comenzar:")}</strong>
+                {tr("seleccioná un archivo desde la barra lateral para iniciar el análisis.")}
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
+language, theme_mode = render_preferences()
 render_global_styles()
+render_theme_overrides(theme_mode)
 render_brand_header()
 _startup_loader.empty()
 
@@ -1279,52 +1572,41 @@ _startup_loader.empty()
 with st.sidebar:
 
     st.markdown(
-        '<div class="biodata-sidebar-kicker">Espacio de trabajo</div>',
+        f'<div class="biodata-sidebar-kicker">{tr("Espacio de trabajo")}</div>',
         unsafe_allow_html=True
     )
 
-    st.subheader("Nuevo análisis")
+    st.subheader(tr("Nuevo análisis"))
 
-    st.caption(
-        "Cargá un dataset biológico tabular para iniciar el análisis."
-    )
+    st.caption(tr("Cargá un dataset biológico tabular para iniciar el análisis."))
 
     uploaded_file = st.file_uploader(
-        "Archivo de datos",
+        tr("Archivo de datos"),
         type=["csv", "data", "txt"],
+        key="biodata_uploaded_file",
         help=(
-            "Formatos admitidos: CSV, DATA y TXT. "
-            "Tamaño máximo: 25 MB."
+            tr("Formatos admitidos: CSV, DATA y TXT. Tamaño máximo: 25 MB.")
         )
     )
 
-    st.caption(
-        "Usá datos públicos o de prueba. No subas información personal, "
-        "clínica, confidencial o regulada."
-    )
+    st.caption(tr("Usá datos públicos o de prueba. No subas información personal, clínica, confidencial o regulada."))
 
     has_header = st.checkbox(
-        "El archivo tiene nombres de columnas",
+        tr("El archivo tiene nombres de columnas"),
         value=True,
+        key="biodata_has_header",
         help=(
-            "Desactivá esta opción si la primera fila contiene datos y no "
-            "los nombres de las variables."
+            tr("Desactivá esta opción si la primera fila contiene datos y no los nombres de las variables.")
         )
     )
 
     st.divider()
 
-    st.markdown("**Procesamiento y privacidad**")
+    st.markdown(f"**{tr('Procesamiento y privacidad')}**")
 
-    st.caption(
-        "El archivo se transfiere a los servidores de Streamlit Community "
-        "Cloud en Estados Unidos y se procesa temporalmente en memoria. "
-        "Biodata no guarda una copia permanente ni lo envía a otros servicios. "
-        "Al cerrar la pestaña, reemplazar o quitar el archivo, deja de estar "
-        "disponible."
-    )
+    st.caption(tr("El archivo se transfiere a los servidores de Streamlit Community Cloud en Estados Unidos y se procesa temporalmente en memoria. Biodata no guarda una copia permanente ni lo envía a otros servicios. Al cerrar la pestaña, reemplazar o quitar el archivo, deja de estar disponible."))
 
-    st.caption("Versión 1 · Análisis y modelos predictivos")
+    st.caption(tr("Versión 1 · Análisis y modelos predictivos"))
 
 
 # =========================================================
@@ -1392,20 +1674,17 @@ except ValueError as error:
 
 if not has_header and not is_abalone:
 
-    st.subheader("Nombres de las variables")
+    st.subheader(tr("Nombres de las variables"))
 
-    st.info(
-        "Este archivo no contiene encabezados. "
-        "Asigná un nombre a cada columna antes de continuar."
-    )
+    st.info(tr("Este archivo no contiene encabezados. Asigná un nombre a cada columna antes de continuar."))
 
     new_column_names = []
 
     for i in range(df.shape[1]):
 
         column_name = st.text_input(
-            f"Columna {i + 1}",
-            value=f"Variable_{i + 1}",
+            tr("Columna {number}", number=i + 1),
+            value=tr("Variable_{number}", number=i + 1),
             key=f"column_name_{i}"
         )
 
@@ -1440,12 +1719,15 @@ categorical_summary = get_categorical_summary(df)
 # =========================================================
 
 st.success(
-    f"Dataset cargado correctamente: {uploaded_file.name}"
+    tr("Dataset cargado correctamente: {filename}", filename=uploaded_file.name)
 )
 
 st.caption(
-    f"{profile['n_rows']} observaciones · "
-    f"{profile['n_columns']} variables"
+    tr(
+        "{rows} observaciones · {columns} variables",
+        rows=profile["n_rows"],
+        columns=profile["n_columns"]
+    )
 )
 
 
@@ -1455,9 +1737,9 @@ st.caption(
 
 tab_summary, tab_eda, tab_model = st.tabs(
     [
-        "Resumen",
-        "Exploración",
-        "Modelos"
+        tr("Resumen"),
+        tr("Exploración"),
+        tr("Modelos")
     ]
 )
 
@@ -1472,7 +1754,7 @@ with tab_summary:
     # MÉTRICAS GENERALES
     # -----------------------------------------------------
 
-    st.header("Resumen del dataset")
+    st.header(tr("Resumen del dataset"))
 
     total_missing = sum(
         quality_report["missing_values"].values()
@@ -1481,22 +1763,22 @@ with tab_summary:
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric(
-        "Observaciones",
+        tr("Observaciones"),
         profile["n_rows"]
     )
 
     col2.metric(
-        "Variables",
+        tr("Variables"),
         profile["n_columns"]
     )
 
     col3.metric(
-        "Valores faltantes",
+        tr("Valores faltantes"),
         total_missing
     )
 
     col4.metric(
-        "Filas duplicadas",
+        tr("Filas duplicadas"),
         quality_report["duplicate_rows"]
     )
 
@@ -1507,10 +1789,10 @@ with tab_summary:
     # VISTA PREVIA
     # -----------------------------------------------------
 
-    st.subheader("Vista previa de datos")
+    st.subheader(tr("Vista previa de datos"))
 
     st.caption(
-        "Primeras 10 observaciones del dataset."
+        tr("Primeras 10 observaciones del dataset.")
     )
 
     st.dataframe(
@@ -1526,7 +1808,7 @@ with tab_summary:
     # CALIDAD
     # -----------------------------------------------------
 
-    st.subheader("Calidad de los datos")
+    st.subheader(tr("Calidad de los datos"))
 
     quality_col1, quality_col2, quality_col3 = st.columns(3)
 
@@ -1546,15 +1828,15 @@ with tab_summary:
 
     with quality_col1:
 
-        st.markdown("**Valores faltantes**")
+        st.markdown(f"**{tr('Valores faltantes')}**")
 
         if missing_with_values:
 
             missing_table = {
-                "Variable": list(
+                tr("Variable"): list(
                     missing_with_values.keys()
                 ),
-                "Cantidad de faltantes": list(
+                tr("Cantidad de faltantes"): list(
                     missing_with_values.values()
                 )
             }
@@ -1568,17 +1850,17 @@ with tab_summary:
         else:
 
             st.write(
-                "No se detectaron valores faltantes."
+                tr("No se detectaron valores faltantes.")
             )
 
     with quality_col2:
 
-        st.markdown("**Valores infinitos**")
+        st.markdown(f"**{tr('Valores infinitos')}**")
 
         if infinite_with_values:
             infinite_table = {
-                "Variable": list(infinite_with_values.keys()),
-                "Cantidad": list(infinite_with_values.values())
+                tr("Variable"): list(infinite_with_values.keys()),
+                tr("Cantidad"): list(infinite_with_values.values())
             }
 
             st.dataframe(
@@ -1588,27 +1870,26 @@ with tab_summary:
             )
 
             st.caption(
-                "En el modelado se tratarán como valores faltantes."
+                tr("En el modelado se tratarán como valores faltantes.")
             )
         else:
-            st.write("No se detectaron valores infinitos.")
+            st.write(tr("No se detectaron valores infinitos."))
 
     with quality_col3:
 
-        st.markdown("**Filas duplicadas**")
+        st.markdown(f"**{tr('Filas duplicadas')}**")
 
         if quality_report["duplicate_rows"] > 0:
 
-            st.write(
-                f"Se detectaron "
-                f"{quality_report['duplicate_rows']} "
-                f"filas duplicadas."
-            )
+            st.write(tr(
+                "Se detectaron {count} filas duplicadas.",
+                count=quality_report["duplicate_rows"]
+            ))
 
         else:
 
             st.write(
-                "No se detectaron filas duplicadas."
+                tr("No se detectaron filas duplicadas.")
             )
 
     st.divider()
@@ -1618,10 +1899,10 @@ with tab_summary:
     # ESTADÍSTICAS DESCRIPTIVAS
     # -----------------------------------------------------
 
-    st.subheader("Estadísticas descriptivas")
+    st.subheader(tr("Estadísticas descriptivas"))
 
     st.caption(
-        "Resumen de las variables numéricas del dataset."
+        tr("Resumen de las variables numéricas del dataset.")
     )
 
     if not numeric_summary.empty:
@@ -1646,15 +1927,15 @@ with tab_summary:
         )
 
         descriptive_table.columns = [
-            "Variable",
+            tr("Variable"),
             "N",
-            "Media",
-            "Desv. estándar",
-            "Mínimo",
+            tr("Media"),
+            tr("Desv. estándar"),
+            tr("Mínimo"),
             "25 %",
-            "Mediana",
+            tr("Mediana"),
             "75 %",
-            "Máximo"
+            tr("Máximo")
         ]
 
         descriptive_table = (
@@ -1675,7 +1956,7 @@ with tab_summary:
     else:
 
         st.info(
-            "No se detectaron variables numéricas."
+            tr("No se detectaron variables numéricas.")
         )
 
     st.divider()
@@ -1685,7 +1966,7 @@ with tab_summary:
     # VARIABLES CATEGÓRICAS
     # -----------------------------------------------------
 
-    st.subheader("Variables categóricas")
+    st.subheader(tr("Variables categóricas"))
 
     if categorical_summary:
 
@@ -1696,10 +1977,10 @@ with tab_summary:
             ):
 
                 categorical_table = {
-                    "Categoría": list(
+                    tr("Categoría"): list(
                         counts.keys()
                     ),
-                    "Frecuencia": list(
+                    tr("Frecuencia"): list(
                         counts.values()
                     )
                 }
@@ -1713,15 +1994,16 @@ with tab_summary:
                 total_categories = df[column].nunique(dropna=False)
 
                 if total_categories > len(counts):
-                    st.caption(
-                        f"Se muestran las {len(counts)} categorías más "
-                        f"frecuentes de {total_categories}."
-                    )
+                    st.caption(tr(
+                        "Se muestran las {shown} categorías más frecuentes de {total}.",
+                        shown=len(counts),
+                        total=total_categories
+                    ))
 
     else:
 
         st.info(
-            "No se detectaron variables categóricas."
+            tr("No se detectaron variables categóricas.")
         )
 
 
@@ -1731,7 +2013,7 @@ with tab_summary:
 
 with tab_eda:
 
-    st.header("Exploración de datos")
+    st.header(tr("Exploración de datos"))
 
     numeric_columns = (
         numeric_summary.columns.tolist()
@@ -1748,19 +2030,22 @@ with tab_eda:
     # DISTRIBUCIÓN NUMÉRICA
     # -----------------------------------------------------
 
-    st.subheader("Distribución de variable numérica")
+    st.subheader(tr("Distribución de variable numérica"))
 
     if numeric_columns:
 
         selected_numeric_column = st.selectbox(
-            "Elegí una variable numérica",
+            tr("Elegí una variable numérica"),
             numeric_columns,
             key="numeric_distribution"
         )
 
-        numeric_fig = plot_numeric_distribution(
-            df,
-            selected_numeric_column
+        numeric_fig = themed_figure(
+            plot_numeric_distribution(
+                df,
+                selected_numeric_column,
+                language=current_language()
+            )
         )
 
         st.pyplot(
@@ -1771,7 +2056,7 @@ with tab_eda:
     else:
 
         st.info(
-            "No hay variables numéricas para visualizar."
+            tr("No hay variables numéricas para visualizar.")
         )
 
     st.divider()
@@ -1781,19 +2066,22 @@ with tab_eda:
     # DISTRIBUCIÓN CATEGÓRICA
     # -----------------------------------------------------
 
-    st.subheader("Distribución de variable categórica")
+    st.subheader(tr("Distribución de variable categórica"))
 
     if categorical_columns:
 
         selected_categorical_column = st.selectbox(
-            "Elegí una variable categórica",
+            tr("Elegí una variable categórica"),
             categorical_columns,
             key="categorical_distribution"
         )
 
-        categorical_fig = plot_categorical_distribution(
-            df,
-            selected_categorical_column
+        categorical_fig = themed_figure(
+            plot_categorical_distribution(
+                df,
+                selected_categorical_column,
+                language=current_language()
+            )
         )
 
         st.pyplot(
@@ -1804,7 +2092,7 @@ with tab_eda:
     else:
 
         st.info(
-            "No hay variables categóricas para visualizar."
+            tr("No hay variables categóricas para visualizar.")
         )
 
     st.divider()
@@ -1814,26 +2102,29 @@ with tab_eda:
     # CORRELACIONES
     # -----------------------------------------------------
 
-    st.subheader("Mapa de correlaciones")
+    st.subheader(tr("Mapa de correlaciones"))
 
     if len(numeric_columns) >= 2:
 
         default_correlation_columns = numeric_columns[:10]
 
         selected_correlation_columns = st.multiselect(
-            "Variables incluidas en el mapa",
+            tr("Variables incluidas en el mapa"),
             numeric_columns,
             default=default_correlation_columns,
             max_selections=20,
+            key=f"biodata_correlation_{dataset_fingerprint}",
             help=(
-                "Elegí entre 2 y 20 variables. Limitar el mapa ayuda a "
-                "mantenerlo legible en datasets grandes."
+                tr("Elegí entre 2 y 20 variables. Limitar el mapa ayuda a mantenerlo legible en datasets grandes.")
             )
         )
 
         if len(selected_correlation_columns) >= 2:
-            correlation_fig = plot_correlation_heatmap(
-                df[selected_correlation_columns]
+            correlation_fig = themed_figure(
+                plot_correlation_heatmap(
+                    df[selected_correlation_columns],
+                    language=current_language()
+                )
             )
 
             st.pyplot(
@@ -1842,14 +2133,13 @@ with tab_eda:
             )
         else:
             st.info(
-                "Seleccioná al menos dos variables para construir el mapa."
+                tr("Seleccioná al menos dos variables para construir el mapa.")
             )
 
     else:
 
         st.info(
-            "Se necesitan al menos dos variables numéricas "
-            "para calcular correlaciones."
+            tr("Se necesitan al menos dos variables numéricas para calcular correlaciones.")
         )
 
 
@@ -1859,28 +2149,26 @@ with tab_eda:
 
 with tab_model:
 
-    st.header("Modelos predictivos")
+    st.header(tr("Modelos predictivos"))
 
     st.caption(
-        "Estos modelos usan aprendizaje automático (machine learning) para "
-        "aprender patrones y estimar un resultado numérico. Configurá el problema, "
-        "compará alternativas y revisá su desempeño antes de utilizarlo."
+        tr("Estos modelos usan aprendizaje automático (machine learning) para aprender patrones y estimar un resultado numérico. Configurá el problema, compará alternativas y revisá su desempeño antes de utilizarlo.")
     )
 
     st.markdown(
-        """
+        f"""
         <div class="biodata-model-flow">
             <div class="biodata-model-flow-item">
-                <span>1</span><strong>Objetivo</strong>
+                <span>1</span><strong>{tr("Objetivo")}</strong>
             </div>
             <div class="biodata-model-flow-item">
-                <span>2</span><strong>Predictores</strong>
+                <span>2</span><strong>{tr("Predictores")}</strong>
             </div>
             <div class="biodata-model-flow-item">
-                <span>3</span><strong>Contexto</strong>
+                <span>3</span><strong>{tr("Contexto")}</strong>
             </div>
             <div class="biodata-model-flow-item">
-                <span>4</span><strong>Comparación</strong>
+                <span>4</span><strong>{tr("Comparación")}</strong>
             </div>
         </div>
         """,
@@ -1901,13 +2189,12 @@ with tab_model:
     if not target_options:
 
         st.warning(
-            "No hay una variable objetivo numérica con al menos 10 valores "
-            "válidos y dos valores diferentes."
+            tr("No hay una variable objetivo numérica con al menos 10 valores válidos y dos valores diferentes.")
         )
 
 
     else:
-        st.markdown("### Configuración")
+        st.markdown(f"### {tr('Configuración')}")
 
         with st.container(border=True):
             target_col, target_data_col = st.columns(
@@ -1916,15 +2203,16 @@ with tab_model:
             )
 
             with target_col:
-                st.markdown("#### 1. Variable objetivo")
+                st.markdown(f"#### {tr('1. Variable objetivo')}")
                 st.caption(
-                    "Es la medida numérica que querés que el modelo estime."
+                    tr("Es la medida numérica que querés que el modelo estime.")
                 )
 
                 target_column = st.selectbox(
-                    "Variable a predecir",
+                    tr("Variable a predecir"),
                     target_options,
                     index=len(target_options) - 1,
+                    key=f"biodata_target_{dataset_fingerprint}",
                     format_func=format_variable_label
                 )
 
@@ -1938,40 +2226,65 @@ with tab_model:
                 st.stop()
 
             with target_data_col:
-                st.markdown("#### Datos disponibles")
-                st.metric("Filas con objetivo válido", len(y))
+                st.markdown(f"#### {tr('Datos disponibles')}")
+                st.metric(tr("Filas con objetivo válido"), len(y))
                 st.caption(
-                    f"Objetivo seleccionado: {format_variable_label(target_column)}"
+                    tr(
+                        "Objetivo seleccionado: {target}",
+                        target=format_variable_label(target_column)
+                    )
                 )
 
             if dropped_target_rows:
-                st.warning(
-                    f"Se excluyeron {dropped_target_rows} filas porque la "
-                    "variable objetivo no tenía un valor numérico válido."
-                )
+                st.warning(tr(
+                    "Se excluyeron {count} filas porque la variable objetivo no tenía un valor numérico válido.",
+                    count=dropped_target_rows
+                ))
 
             st.divider()
-            st.markdown("#### 2. Variables predictoras")
+            st.markdown(f"#### {tr('2. Variables predictoras')}")
 
             target_display_name = format_variable_label(target_column).lower()
 
-            st.write(
-                "Las variables predictoras son las **pistas que usará el "
-                f"modelo para estimar {target_display_name}**. Podés mantener "
-                "todas o quitar las que no correspondan al uso real."
+            predictor_intro = tr(
+                "Las variables predictoras son las pistas que usará el modelo para estimar {target}. Podés mantener todas o quitar las que no correspondan al uso real.",
+                target=target_display_name
             )
+            if current_language() == "es":
+                predictor_intro = predictor_intro.replace(
+                    "las pistas que usará el modelo para estimar",
+                    "las **pistas que usará el modelo para estimar"
+                ).replace(
+                    f"{target_display_name}.",
+                    f"{target_display_name}**."
+                )
+            else:
+                predictor_intro = predictor_intro.replace(
+                    "the information the model will use to estimate",
+                    "the **information the model will use to estimate"
+                ).replace(
+                    f"{target_display_name}.",
+                    f"{target_display_name}**."
+                )
+            st.write(predictor_intro)
 
-            st.markdown(
-                """
+            if current_language() == "es":
+                st.markdown(
+                    """
 - **Mantené** mediciones y características que conocerías antes de hacer la predicción.
 - **Quitá** identificadores, números de fila, datos obtenidos después del resultado o variables que revelen directamente la respuesta.
-                """
-            )
+                    """
+                )
+            else:
+                st.markdown(
+                    """
+- **Keep** measurements and characteristics available before making the prediction.
+- **Remove** identifiers, row numbers, information collected after the outcome or variables that directly reveal the answer.
+                    """
+                )
 
             st.caption(
-                "¿Por qué importa? Si el modelo recibe información que no "
-                "existiría en una situación real, puede mostrar resultados "
-                "demasiado buenos que después no se repiten."
+                tr("¿Por qué importa? Si el modelo recibe información que no existiría en una situación real, puede mostrar resultados demasiado buenos que después no se repiten.")
             )
 
             available_feature_types = detect_feature_types(X)
@@ -1991,15 +2304,13 @@ with tab_model:
             ]
 
             selected_features = st.multiselect(
-                "Variables incluidas",
+                tr("Variables incluidas"),
                 usable_features,
                 default=usable_features,
                 key=f"biodata_features_{dataset_fingerprint}_{target_column}",
                 format_func=format_variable_label,
                 help=(
-                    "Usá la X de cada etiqueta para quitar una variable. Esto "
-                    "no borra la columna del archivo: solo evita que el modelo "
-                    "la utilice."
+                    tr("Usá la X de cada etiqueta para quitar una variable. Esto no borra la columna del archivo: solo evita que el modelo la utilice.")
                 )
             )
 
@@ -2008,13 +2319,13 @@ with tab_model:
                     format_variable_label(column)
                     for column in ignored_features
                 )
-                st.caption(
-                    "Biodata excluyó variables vacías o no compatibles: "
-                    + ignored_text
-                )
+                st.caption(tr(
+                    "Biodata excluyó variables vacías o no compatibles: {variables}",
+                    variables=ignored_text
+                ))
 
             if not selected_features:
-                st.warning("Seleccioná al menos una variable predictora.")
+                st.warning(tr("Seleccioná al menos una variable predictora."))
                 st.stop()
 
             X = X[selected_features].copy()
@@ -2033,25 +2344,26 @@ with tab_model:
                     format_variable_label(column)
                     for column in high_cardinality_features
                 )
-                st.warning(
-                    "Revisá estas variables: tienen muchas categorías y podrían "
-                    f"ser identificadores: {high_cardinality_text}."
-                )
+                st.warning(tr(
+                    "Revisá estas variables: tienen muchas categorías y podrían ser identificadores: {variables}.",
+                    variables=high_cardinality_text
+                ))
 
-            st.caption(
-                f"{len(selected_features)} variables seleccionadas · "
-                f"{len(numeric_features)} numéricas · "
-                f"{len(categorical_features)} categóricas"
-            )
+            st.caption(tr(
+                "{selected} variables seleccionadas · {numeric} numéricas · {categorical} categóricas",
+                selected=len(selected_features),
+                numeric=len(numeric_features),
+                categorical=len(categorical_features)
+            ))
 
-            with st.expander("Ver detalle de las variables seleccionadas"):
+            with st.expander(tr("Ver detalle de las variables seleccionadas")):
                 numeric_text = (
                     ", ".join(
                         format_variable_label(column)
                         for column in numeric_features
                     )
                     if numeric_features
-                    else "Ninguna"
+                    else tr("Ninguna")
                 )
                 categorical_text = (
                     ", ".join(
@@ -2059,32 +2371,29 @@ with tab_model:
                         for column in categorical_features
                     )
                     if categorical_features
-                    else "Ninguna"
+                    else tr("Ninguna")
                 )
 
-                st.markdown(f"**Numéricas:** {numeric_text}")
-                st.markdown(f"**Categóricas:** {categorical_text}")
+                st.markdown(f"**{tr('Numéricas')}:** {numeric_text}")
+                st.markdown(f"**{tr('Categóricas')}:** {categorical_text}")
 
-        with st.expander("3. Contexto de uso (recomendado)"):
+        with st.expander(tr("3. Contexto de uso (recomendado)")):
             st.caption(
-                "Ayuda a convertir las métricas en recomendaciones útiles. "
-                "No modifica el entrenamiento."
+                tr("Ayuda a convertir las métricas en recomendaciones útiles. No modifica el entrenamiento.")
             )
 
             context_goal = st.text_area(
-                "¿Cuál es el objetivo del análisis?",
+                tr("¿Cuál es el objetivo del análisis?"),
                 placeholder=(
-                    "Ejemplo: estimar la edad para priorizar muestras que "
-                    "necesitan una revisión especializada."
+                    tr("Ejemplo: estimar la edad para priorizar muestras que necesitan una revisión especializada.")
                 ),
                 key="biodata_context_goal"
             )
 
             context_decision = st.text_area(
-                "¿Qué decisión querés apoyar con el resultado?",
+                tr("¿Qué decisión querés apoyar con el resultado?"),
                 placeholder=(
-                    "Ejemplo: decidir qué casos revisar primero, sin reemplazar "
-                    "la evaluación de una persona especialista."
+                    tr("Ejemplo: decidir qué casos revisar primero, sin reemplazar la evaluación de una persona especialista.")
                 ),
                 key="biodata_context_decision"
             )
@@ -2092,29 +2401,31 @@ with tab_model:
             context_col1, context_col2 = st.columns(2)
 
             context_audience = context_col1.selectbox(
-                "Audiencia del informe",
+                tr("Audiencia del informe"),
                 [
                     "Público general",
                     "Equipo técnico",
                     "Equipo científico",
                     "Responsables de decisión"
                 ],
+                format_func=tr,
                 key="biodata_context_audience"
             )
 
             context_impact = context_col2.selectbox(
-                "Impacto de la decisión",
+                tr("Impacto de la decisión"),
                 ["Bajo", "Medio", "Alto", "Crítico"],
                 index=1,
+                format_func=tr,
                 key="biodata_context_impact"
             )
 
             acceptable_error = st.number_input(
-                "Error máximo tolerable",
+                tr("Error máximo tolerable"),
                 min_value=0.0,
                 value=0.0,
                 step=0.1,
-                help="Usá 0 si todavía no fue definido.",
+                help=tr("Usá 0 si todavía no fue definido."),
                 key="biodata_acceptable_error"
             )
 
@@ -2139,21 +2450,20 @@ with tab_model:
             )
 
             with run_text_col:
-                st.markdown("#### 4. Ejecutar análisis")
+                st.markdown(f"#### {tr('4. Ejecutar análisis')}")
                 st.caption(
-                    "Biodata reservará 20 % de los datos para la prueba final y "
-                    "comparará los modelos solo con el conjunto de entrenamiento."
+                    tr("Biodata reservará 20 % de los datos para la prueba final y comparará los modelos solo con el conjunto de entrenamiento.")
                 )
 
             analyze_clicked = run_button_col.button(
-                "Analizar y comparar modelos",
+                tr("Analizar y comparar modelos"),
                 type="primary",
                 use_container_width=True
             )
 
         if analyze_clicked:
             with st.spinner(
-                "Preparando datos, comparando modelos y generando diagnósticos..."
+                tr("Preparando datos, comparando modelos y generando diagnósticos...")
             ):
                 X_train, X_test, y_train, y_test = split_train_test(X, y)
 
@@ -2221,7 +2531,8 @@ with tab_model:
                 diagnostic_warnings = build_diagnostic_warnings(
                     evaluation_summary,
                     prediction_table,
-                    subgroup_errors
+                    subgroup_errors,
+                    language=current_language()
                 )
 
                 diagnostics_summary = summarize_diagnostics(
@@ -2245,6 +2556,7 @@ with tab_model:
                 "feature_importance": feature_importance,
                 "subgroup_errors": subgroup_errors,
                 "diagnostics_summary": diagnostics_summary,
+                "language": current_language(),
                 "n_train": len(X_train),
                 "n_test": len(X_test),
                 "processed_feature_count": processed_feature_count
@@ -2257,8 +2569,7 @@ with tab_model:
             or analysis_result.get("analysis_id") != analysis_id
         ):
             st.info(
-                "Ejecutá el análisis para ver la comparación, los diagnósticos "
-                "y el informe final."
+                tr("Ejecutá el análisis para ver la comparación, los diagnósticos y el informe final.")
             )
 
         else:
@@ -2270,26 +2581,43 @@ with tab_model:
             subgroup_errors = analysis_result["subgroup_errors"]
             diagnostics_summary = analysis_result["diagnostics_summary"]
 
+            if analysis_result.get("language") != current_language():
+                localized_warnings = build_diagnostic_warnings(
+                    evaluation_summary,
+                    prediction_table,
+                    subgroup_errors,
+                    language=current_language()
+                )
+                diagnostics_summary = {
+                    **diagnostics_summary,
+                    "warnings": localized_warnings
+                }
+
             st.divider()
-            st.markdown("### Resultados")
+            st.markdown(f"### {tr('Resultados')}")
+
+            localized_model_name = model_label(
+                best_model_name,
+                current_language()
+            )
 
             st.markdown(
                 f"""
                 <div class="biodata-result-overview">
                     <div class="biodata-result-overview-card">
-                        <span>Modelo seleccionado</span>
-                        <strong>{escape(str(best_model_name))}</strong>
-                        <small>Menor MAE en la validación cruzada</small>
+                        <span>{tr("Modelo seleccionado")}</span>
+                        <strong>{escape(localized_model_name)}</strong>
+                        <small>{tr("Menor MAE en la validación cruzada")}</small>
                     </div>
                     <div class="biodata-result-overview-card">
-                        <span>División de los datos</span>
+                        <span>{tr("División de los datos")}</span>
                         <strong>{analysis_result['n_train']} / {analysis_result['n_test']}</strong>
-                        <small>Entrenamiento / prueba</small>
+                        <small>{tr("Entrenamiento / prueba")}</small>
                     </div>
                     <div class="biodata-result-overview-card">
-                        <span>Variables procesadas</span>
+                        <span>{tr("Variables procesadas")}</span>
                         <strong>{analysis_result['processed_feature_count']}</strong>
-                        <small>Después del preprocesamiento</small>
+                        <small>{tr("Después del preprocesamiento")}</small>
                     </div>
                 </div>
                 """,
@@ -2297,17 +2625,19 @@ with tab_model:
             )
 
             comparison_table = {
-                "Modelo": [],
-                "MAE promedio (CV)": []
+                tr("Modelo"): [],
+                tr("MAE promedio (CV)"): []
             }
 
             for model_name, result in model_results.items():
-                comparison_table["Modelo"].append(model_name)
-                comparison_table["MAE promedio (CV)"].append(
+                comparison_table[tr("Modelo")].append(
+                    model_label(model_name, current_language())
+                )
+                comparison_table[tr("MAE promedio (CV)")].append(
                     round(float(result["mean_mae"]), 4)
                 )
 
-            with st.expander("Ver comparación de los cuatro modelos"):
+            with st.expander(tr("Ver comparación de los cuatro modelos")):
                 st.dataframe(
                     comparison_table,
                     use_container_width=True,
@@ -2315,15 +2645,14 @@ with tab_model:
                 )
 
                 st.caption(
-                    "La comparación usa únicamente el entrenamiento. Un MAE "
-                    "menor representa un error promedio menor."
+                    tr("La comparación usa únicamente el entrenamiento. Un MAE menor representa un error promedio menor.")
                 )
 
             # -------------------------------------------------
             # EVALUACIÓN Y DIAGNÓSTICOS
             # -------------------------------------------------
 
-            st.markdown("#### Rendimiento en datos de prueba")
+            st.markdown(f"#### {tr('Rendimiento en datos de prueba')}")
 
             st.markdown(
                 f"""
@@ -2331,22 +2660,22 @@ with tab_model:
                     <div class="biodata-test-metric">
                         <span>MAE</span>
                         <strong>{format_spanish_number(evaluation_summary['mae'], 3)}</strong>
-                        <small>Error promedio</small>
+                        <small>{tr("Error promedio")}</small>
                     </div>
                     <div class="biodata-test-metric">
                         <span>RMSE</span>
                         <strong>{format_spanish_number(evaluation_summary['rmse'], 3)}</strong>
-                        <small>Penaliza errores grandes</small>
+                        <small>{tr("Penaliza errores grandes")}</small>
                     </div>
                     <div class="biodata-test-metric">
                         <span>R²</span>
                         <strong>{format_spanish_number(evaluation_summary['r2'], 3)}</strong>
-                        <small>Ajuste global</small>
+                        <small>{tr("Ajuste global")}</small>
                     </div>
                     <div class="biodata-test-metric">
                         <span>Error P90</span>
                         <strong>{format_spanish_number(diagnostics_summary['p90_absolute_error'], 3)}</strong>
-                        <small>El 90 % queda por debajo</small>
+                        <small>{tr("El 90 % queda por debajo")}</small>
                     </div>
                 </div>
                 """,
@@ -2354,9 +2683,7 @@ with tab_model:
             )
 
             st.caption(
-                "Las métricas y los gráficos siguientes se calcularon sobre "
-                "el conjunto de prueba reservado. El preprocesador se ajustó "
-                "solo con entrenamiento para evitar filtraciones."
+                tr("Las métricas y los gráficos siguientes se calcularon sobre el conjunto de prueba reservado. El preprocesador se ajustó solo con entrenamiento para evitar filtraciones.")
             )
 
             for warning in diagnostics_summary["warnings"]:
@@ -2366,14 +2693,12 @@ with tab_model:
 
             if not diagnostics_summary["warnings"]:
                 st.success(
-                    "No se activaron advertencias con las reglas diagnósticas "
-                    "actuales."
+                    tr("No se activaron advertencias con las reglas diagnósticas actuales.")
                 )
 
-            st.markdown("#### Diagnóstico del modelo")
+            st.markdown(f"#### {tr('Diagnóstico del modelo')}")
             st.caption(
-                "Explorá cómo se distribuyen los errores, qué variables aportan "
-                "información y qué casos conviene revisar."
+                tr("Explorá cómo se distribuyen los errores, qué variables aportan información y qué casos conviene revisar.")
             )
 
             (
@@ -2383,25 +2708,27 @@ with tab_model:
                 review_tab
             ) = st.tabs(
                 [
-                    "Predicciones",
-                    "Residuos",
-                    "Variables importantes",
-                    "Casos a revisar"
+                    tr("Predicciones"),
+                    tr("Residuos"),
+                    tr("Variables importantes"),
+                    tr("Casos a revisar")
                 ]
             )
 
             with predictions_tab:
                 st.pyplot(
-                    plot_actual_vs_predicted(
-                        prediction_table,
-                        target_column
+                    themed_figure(
+                        plot_actual_vs_predicted(
+                            prediction_table,
+                            target_column,
+                            language=current_language()
+                        )
                     ),
                     use_container_width=True
                 )
 
                 st.caption(
-                    "Cuanto más cerca esté un punto de la línea diagonal, "
-                    "más cercana fue la predicción al valor real."
+                    tr("Cuanto más cerca esté un punto de la línea diagonal, más cercana fue la predicción al valor real.")
                 )
 
             with residuals_tab:
@@ -2409,20 +2736,28 @@ with tab_model:
 
                 with residual_col1:
                     st.pyplot(
-                        plot_residuals(prediction_table),
+                        themed_figure(
+                            plot_residuals(
+                                prediction_table,
+                                language=current_language()
+                            )
+                        ),
                         use_container_width=True
                     )
 
                 with residual_col2:
                     st.pyplot(
-                        plot_residual_distribution(prediction_table),
+                        themed_figure(
+                            plot_residual_distribution(
+                                prediction_table,
+                                language=current_language()
+                            )
+                        ),
                         use_container_width=True
                     )
 
                 st.caption(
-                    "Un patrón aleatorio alrededor de cero es deseable. "
-                    "Patrones o desplazamientos persistentes pueden indicar "
-                    "sesgo o relaciones que el modelo no aprendió."
+                    tr("Un patrón aleatorio alrededor de cero es deseable. Patrones o desplazamientos persistentes pueden indicar sesgo o relaciones que el modelo no aprendió.")
                 )
 
             with importance_tab:
@@ -2430,24 +2765,28 @@ with tab_model:
 
                 with importance_col1:
                     st.pyplot(
-                        plot_feature_importance(feature_importance),
+                        themed_figure(
+                            plot_feature_importance(
+                                feature_importance,
+                                language=current_language()
+                            )
+                        ),
                         use_container_width=True
                     )
 
                 with importance_col2:
                     st.dataframe(
-                        feature_importance,
+                        localize_generated_table(feature_importance),
                         use_container_width=True,
                         hide_index=True
                     )
 
                 st.caption(
-                    "La importancia por permutación muestra utilidad predictiva: "
-                    "no demuestra que una variable cause el resultado."
+                    tr("La importancia por permutación muestra utilidad predictiva: no demuestra que una variable cause el resultado.")
                 )
 
             with review_tab:
-                st.markdown("##### Casos con mayor error")
+                st.markdown(f"##### {tr('Casos con mayor error')}")
 
                 largest_errors = get_largest_errors(
                     prediction_table,
@@ -2455,21 +2794,20 @@ with tab_model:
                 )
 
                 st.dataframe(
-                    largest_errors,
+                    localize_generated_table(largest_errors),
                     use_container_width=True,
                     hide_index=True
                 )
 
-                st.markdown("##### Rendimiento por grupos")
+                st.markdown(f"##### {tr('Rendimiento por grupos')}")
 
                 if subgroup_errors.empty:
                     st.info(
-                        "No hay grupos categóricos con suficientes casos para "
-                        "comparar su rendimiento."
+                        tr("No hay grupos categóricos con suficientes casos para comparar su rendimiento.")
                     )
                 else:
                     st.dataframe(
-                        subgroup_errors,
+                        localize_generated_table(subgroup_errors),
                         use_container_width=True,
                         hide_index=True
                     )
@@ -2480,7 +2818,7 @@ with tab_model:
             # INFORME FINAL
             # -------------------------------------------------
 
-            st.subheader("Informe final")
+            st.subheader(tr("Informe final"))
 
             final_report = build_full_report(
                 profile,
@@ -2489,12 +2827,12 @@ with tab_model:
                 evaluation_summary,
                 target_column=target_column,
                 diagnostics_summary=diagnostics_summary,
-                user_context=user_context
+                user_context=user_context,
+                language=current_language()
             )
 
             st.caption(
-                "Resumen de resultados, diagnósticos y recomendaciones para "
-                "interpretar el modelo de forma responsable."
+                tr("Resumen de resultados, diagnósticos y recomendaciones para interpretar el modelo de forma responsable.")
             )
 
             st.markdown(
@@ -2603,7 +2941,10 @@ with tab_model:
             )
 
             target_label = format_variable_label(target_column)
-            model_label = str(best_model_name)
+            selected_model_label = model_label(
+                best_model_name,
+                current_language()
+            )
             mae_text = format_spanish_number(
                 evaluation_summary["mae"],
                 decimals=2
@@ -2614,30 +2955,30 @@ with tab_model:
                 r2_text = (
                     f"{format_spanish_number(r2_value * 100, decimals=1)} %"
                 )
-                r2_helper = "de la variabilidad observada en la prueba"
+                r2_helper = tr("de la variabilidad observada en la prueba")
             else:
                 r2_text = format_spanish_number(r2_value, decimals=2)
-                r2_helper = "rinde peor que predecir usando el promedio"
+                r2_helper = tr("rinde peor que predecir usando el promedio")
 
             st.markdown(
                 f"""
                 <div class="biodata-summary-grid">
                     <div class="biodata-summary-card">
-                        <div class="biodata-card-label">Modelo seleccionado</div>
-                        <div class="biodata-card-value">{escape(model_label)}</div>
+                        <div class="biodata-card-label">{tr("Modelo seleccionado")}</div>
+                        <div class="biodata-card-value">{escape(selected_model_label)}</div>
                         <div class="biodata-card-helper">
-                            Menor error promedio en la validación cruzada
+                            {tr("Menor error promedio en la validación cruzada")}
                         </div>
                     </div>
                     <div class="biodata-summary-card">
-                        <div class="biodata-card-label">Error promedio (MAE)</div>
-                        <div class="biodata-card-value">{mae_text} unidades</div>
+                        <div class="biodata-card-label">{tr("Error promedio (MAE)")}</div>
+                        <div class="biodata-card-value">{mae_text} {tr("unidades")}</div>
                         <div class="biodata-card-helper">
-                            por predicción de {escape(target_label.lower())}
+                            {tr("por predicción de {target}", target=escape(target_label.lower()))}
                         </div>
                     </div>
                     <div class="biodata-summary-card">
-                        <div class="biodata-card-label">R² en datos de prueba</div>
+                        <div class="biodata-card-label">{tr("R² en datos de prueba")}</div>
                         <div class="biodata-card-value">{r2_text}</div>
                         <div class="biodata-card-helper">{r2_helper}</div>
                     </div>
@@ -2646,7 +2987,7 @@ with tab_model:
                 unsafe_allow_html=True
             )
 
-            st.markdown("#### Lectura rápida")
+            st.markdown(f"#### {tr('Lectura rápida')}")
 
             top_features = diagnostics_summary["top_features"]
 
@@ -2659,36 +3000,65 @@ with tab_model:
                     )
                     for item in top_features[:3]
                 )
-                feature_paragraph = (
-                    "<p><strong>Qué información resultó más útil:</strong> "
-                    f"{feature_names_html} fueron las variables que más ayudaron "
-                    "al modelo a realizar sus estimaciones. Esto no significa "
-                    "que provoquen cambios en el resultado.</p>"
-                )
+                if current_language() == "es":
+                    feature_paragraph = (
+                        "<p><strong>Qué información resultó más útil:</strong> "
+                        f"{feature_names_html} fueron las variables que más ayudaron "
+                        "al modelo a realizar sus estimaciones. Esto no significa "
+                        "que provoquen cambios en el resultado.</p>"
+                    )
+                else:
+                    feature_paragraph = (
+                        "<p><strong>Which information was most useful:</strong> "
+                        f"{feature_names_html} contributed the most to the model's "
+                        "estimates. This does not mean they cause changes in the "
+                        "outcome.</p>"
+                    )
             else:
-                feature_paragraph = (
-                    "<p><strong>Qué información resultó más útil:</strong> En "
-                    "esta evaluación no se identificaron variables con un "
-                    "aporte predictivo positivo y estable.</p>"
-                )
+                if current_language() == "es":
+                    feature_paragraph = (
+                        "<p><strong>Qué información resultó más útil:</strong> En "
+                        "esta evaluación no se identificaron variables con un "
+                        "aporte predictivo positivo y estable.</p>"
+                    )
+                else:
+                    feature_paragraph = (
+                        "<p><strong>Which information was most useful:</strong> "
+                        "This evaluation did not identify variables with a stable, "
+                        "positive predictive contribution.</p>"
+                    )
 
             if r2_value >= 0:
                 unexplained_text = format_spanish_number(
                     max(0, (1 - r2_value) * 100),
                     decimals=1
                 )
-                performance_paragraph = (
-                    "<p><strong>Cuánto logra explicar:</strong> De las diferencias "
-                    f"observadas en {escape(target_label.lower())}, el modelo "
-                    f"logra captar aproximadamente el <strong>{r2_text}</strong>. "
-                    f"El {unexplained_text} % restante queda sin explicar con "
-                    "la información disponible.</p>"
-                )
+                if current_language() == "es":
+                    performance_paragraph = (
+                        "<p><strong>Cuánto logra explicar:</strong> De las diferencias "
+                        f"observadas en {escape(target_label.lower())}, el modelo "
+                        f"logra captar aproximadamente el <strong>{r2_text}</strong>. "
+                        f"El {unexplained_text} % restante queda sin explicar con "
+                        "la información disponible.</p>"
+                    )
+                else:
+                    performance_paragraph = (
+                        "<p><strong>How much it explains:</strong> The model captures "
+                        f"approximately <strong>{r2_text}</strong> of the observed "
+                        f"variation in {escape(target_label.lower())}. The remaining "
+                        f"{unexplained_text}% is not explained by the available "
+                        "information.</p>"
+                    )
             else:
                 performance_paragraph = (
                     "<p><strong>Cuánto logra explicar:</strong> El R² fue "
                     "negativo. Con estos datos de prueba, el modelo no mejora "
                     "una estimación basada solamente en el valor promedio.</p>"
+                    if current_language() == "es"
+                    else
+                    "<p><strong>How much it explains:</strong> R² is negative. "
+                    "On this test set, the model does not improve on an estimate "
+                    "based only on the mean value.</p>"
                 )
 
             if acceptable_error > 0:
@@ -2699,18 +3069,32 @@ with tab_model:
 
                 if evaluation_summary["mae"] <= acceptable_error:
                     status_class = "biodata-status-good"
-                    status_title = "Dentro de la tolerancia declarada"
-                    status_detail = (
-                        f"El MAE de {mae_text} es menor o igual al límite de "
-                        f"{acceptable_error_text} unidades."
-                    )
+                    if current_language() == "es":
+                        status_title = "Dentro de la tolerancia declarada"
+                        status_detail = (
+                            f"El MAE de {mae_text} es menor o igual al límite de "
+                            f"{acceptable_error_text} unidades."
+                        )
+                    else:
+                        status_title = "Within the declared tolerance"
+                        status_detail = (
+                            f"The MAE of {mae_text} is at or below the limit of "
+                            f"{acceptable_error_text} units."
+                        )
                 else:
                     status_class = "biodata-status-warning"
-                    status_title = "Supera la tolerancia declarada"
-                    status_detail = (
-                        f"El MAE de {mae_text} supera el límite de "
-                        f"{acceptable_error_text} unidades."
-                    )
+                    if current_language() == "es":
+                        status_title = "Supera la tolerancia declarada"
+                        status_detail = (
+                            f"El MAE de {mae_text} supera el límite de "
+                            f"{acceptable_error_text} unidades."
+                        )
+                    else:
+                        status_title = "Above the declared tolerance"
+                        status_detail = (
+                            f"The MAE of {mae_text} exceeds the limit of "
+                            f"{acceptable_error_text} units."
+                        )
 
                 decision_status_html = f"""
                     <div class="biodata-status {status_class}">
@@ -2719,11 +3103,18 @@ with tab_model:
                     </div>
                 """
             else:
-                decision_status_html = (
-                    "<p>Antes de usar el resultado, definí si un error promedio "
-                    f"de <strong>{mae_text} unidades</strong> es aceptable para "
-                    "el objetivo del análisis.</p>"
-                )
+                if current_language() == "es":
+                    decision_status_html = (
+                        "<p>Antes de usar el resultado, definí si un error promedio "
+                        f"de <strong>{mae_text} unidades</strong> es aceptable para "
+                        "el objetivo del análisis.</p>"
+                    )
+                else:
+                    decision_status_html = (
+                        "<p>Before using the result, decide whether an average "
+                        f"error of <strong>{mae_text} units</strong> is acceptable "
+                        "for the purpose of the analysis.</p>"
+                    )
 
             impact_paragraph = ""
 
@@ -2731,63 +3122,94 @@ with tab_model:
                 impact_paragraph = (
                     "<p>Como el impacto declarado es alto, necesitás validación "
                     "externa y revisión especializada antes de usar el modelo.</p>"
+                    if current_language() == "es"
+                    else
+                    "<p>Because the declared impact is high, external validation "
+                    "and specialist review are required before using the model.</p>"
                 )
 
-            st.markdown(
-                f"""
-                <div class="biodata-reading-grid">
-                    <div class="biodata-reading-card">
-                        <h5>¿Qué significa en la práctica?</h5>
-                        <p><strong>Qué tan cerca suele estar:</strong> Al predecir
-                        {escape(target_label.lower())}, las estimaciones se
-                        diferencian del valor real en <strong>{mae_text}
-                        unidades en promedio</strong>. No es un error máximo:
-                        algunos casos quedan más cerca y otros más lejos.</p>
-                        {performance_paragraph}
-                        {feature_paragraph}
-                    </div>
-                    <div class="biodata-reading-card">
-                        <h5>¿Cómo usar esta información?</h5>
-                        {decision_status_html}
-                        <p>Puede ayudar a <strong>ordenar, priorizar o revisar
-                        casos</strong>. Las decisiones de mayor impacto requieren
-                        confirmación humana.</p>
-                        {impact_paragraph}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            if current_language() == "es":
+                practical_heading = "¿Qué significa en la práctica?"
+                practical_intro = (
+                    "<p><strong>Qué tan cerca suele estar:</strong> Al predecir "
+                    f"{escape(target_label.lower())}, las estimaciones se "
+                    f"diferencian del valor real en <strong>{mae_text} "
+                    "unidades en promedio</strong>. No es un error máximo: "
+                    "algunos casos quedan más cerca y otros más lejos.</p>"
+                )
+                decision_heading = "¿Cómo usar esta información?"
+                decision_paragraph = (
+                    "<p>Puede ayudar a <strong>ordenar, priorizar o revisar "
+                    "casos</strong>. Las decisiones de mayor impacto requieren "
+                    "confirmación humana.</p>"
+                )
+            else:
+                practical_heading = "What does this mean in practice?"
+                practical_intro = (
+                    "<p><strong>How close predictions usually are:</strong> When "
+                    f"predicting {escape(target_label.lower())}, estimates differ "
+                    f"from the actual value by <strong>{mae_text} units on "
+                    "average</strong>. This is not a maximum error: some cases "
+                    "are closer and others are farther away.</p>"
+                )
+                decision_heading = "How should this information be used?"
+                decision_paragraph = (
+                    "<p>It can help <strong>rank, prioritize or review cases</strong>. "
+                    "Higher-impact decisions require human confirmation.</p>"
+                )
 
-            with st.expander("Limitaciones y controles recomendados"):
-                st.markdown(
-                    """
+            reading_html = (
+                '<div class="biodata-reading-grid">'
+                '<div class="biodata-reading-card">'
+                f"<h5>{practical_heading}</h5>"
+                f"{practical_intro}{performance_paragraph}{feature_paragraph}"
+                "</div>"
+                '<div class="biodata-reading-card">'
+                f"<h5>{decision_heading}</h5>"
+                f"{decision_status_html}{decision_paragraph}{impact_paragraph}"
+                "</div></div>"
+            )
+            st.markdown(reading_html, unsafe_allow_html=True)
+
+            with st.expander(tr("Limitaciones y controles recomendados")):
+                if current_language() == "es":
+                    st.markdown(
+                        """
 - **Métricas promedio:** pueden ocultar casos extremos o diferencias importantes entre grupos.
 - **Validación interna:** el desempeño puede cambiar con otra población, laboratorio, región o período.
 - **Predicción, no causalidad:** la utilidad de una variable no demuestra que sea la causa del resultado.
 - **Sin intervalos individuales:** todavía no se cuantifica la incertidumbre de cada predicción.
-                    """
-                )
+                        """
+                    )
+                else:
+                    st.markdown(
+                        """
+- **Average metrics:** can hide extreme cases or important differences between groups.
+- **Internal validation:** performance may change in another population, laboratory, region or period.
+- **Prediction, not causality:** a variable's usefulness does not prove that it causes the outcome.
+- **No individual intervals:** uncertainty is not yet quantified for each prediction.
+                        """
+                    )
 
                 st.info(
-                    "Antes de tomar decisiones importantes: validá el modelo "
-                    "con datos nuevos, revisá los grupos relevantes y mantené "
-                    "supervisión humana."
+                    tr("Antes de tomar decisiones importantes: validá el modelo con datos nuevos, revisá los grupos relevantes y mantené supervisión humana.")
                 )
 
             st.divider()
-            st.markdown("#### Informe detallado")
+            st.markdown(f"#### {tr('Informe detallado')}")
 
             st.caption(
-                "Descargá el perfil del dataset, la calidad de los datos, la "
-                "comparación de modelos, las métricas, los diagnósticos y las "
-                "recomendaciones en un único archivo."
+                tr("Descargá el perfil del dataset, la calidad de los datos, la comparación de modelos, las métricas, los diagnósticos y las recomendaciones en un único archivo.")
             )
 
             st.download_button(
-                "Descargar informe completo (.txt)",
+                tr("Descargar informe completo (.txt)"),
                 data=final_report.encode("utf-8"),
-                file_name=f"reporte_biodata_{target_column}.txt",
+                file_name=(
+                    f"biodata_report_{target_column}.txt"
+                    if current_language() == "en"
+                    else f"reporte_biodata_{target_column}.txt"
+                ),
                 mime="text/plain",
                 type="primary"
             )

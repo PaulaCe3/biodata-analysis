@@ -12,6 +12,8 @@ comprensibles, auditables y útiles como apoyo a decisiones.
 ## Funcionalidades
 
 - Carga de archivos CSV, DATA y TXT, con o sin encabezados.
+- Interfaz completa en español e inglés.
+- Apariencia automática, clara u oscura, con gráficos adaptados al tema elegido.
 - Perfil general y control de valores faltantes, infinitos y duplicados.
 - Resúmenes y visualizaciones exploratorias.
 - Separación reproducible entre entrenamiento y prueba.
@@ -50,6 +52,10 @@ streamlit run app.py
 Subí un dataset, abrí **Modelos**, elegí una variable objetivo numérica y
 presioná **Analizar y comparar modelos**.
 
+El idioma y la apariencia pueden cambiarse desde **Preferencias** en la barra
+lateral. El archivo cargado y los resultados de la sesión se conservan al
+cambiar estas opciones.
+
 ## Cómo interpretar los resultados
 
 - **MAE:** distancia promedio entre la predicción y el valor real, expresada en
@@ -84,7 +90,9 @@ app.py
   ├─ preparación y entrenamiento  src/preprocessing.py · src/modeling.py
   ├─ evaluación                   src/evaluation.py
   ├─ diagnóstico y explicabilidad src/diagnostics.py
-  └─ informe descargable          src/report.py
+  ├─ informe descargable          src/report.py
+  ├─ interfaz bilingüe            src/i18n.py
+  └─ temas para gráficos          src/plot_style.py
 ```
 
 El conjunto de prueba se utiliza una sola vez después de seleccionar el modelo
