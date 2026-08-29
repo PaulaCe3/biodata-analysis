@@ -694,8 +694,8 @@ def render_global_styles():
             padding: 1.1rem;
         }
         .biodata-trust-label {
-            color: rgba(231, 239, 235, 0.52);
-            font-size: 0.7rem;
+            color: rgba(231, 239, 235, 0.72);
+            font-size: 0.74rem;
             font-weight: 750;
             letter-spacing: 0.09em;
             margin-bottom: 0.5rem;
@@ -729,8 +729,8 @@ def render_global_styles():
             line-height: 1.35;
         }
         .biodata-trust-item small {
-            color: rgba(231, 239, 235, 0.54);
-            font-size: 0.74rem;
+            color: rgba(231, 239, 235, 0.70);
+            font-size: 0.78rem;
             line-height: 1.45;
             margin-top: 0.18rem;
         }
@@ -1386,9 +1386,24 @@ def render_theme_overrides(theme_mode):
         [data-testid="stMetric"],
         [data-testid="stExpander"],
         [data-testid="stDialog"] [role="dialog"] {
-            background: rgba(255, 255, 255, 0.72);
+            background: #ffffff !important;
             border-color: rgba(26, 51, 37, 0.12);
             box-shadow: 0 10px 30px rgba(30, 64, 45, 0.055);
+        }
+        [data-testid="stDialog"] h1,
+        [data-testid="stDialog"] h2,
+        [data-testid="stDialog"] h3,
+        [data-testid="stDialog"] h4,
+        [data-testid="stDialog"] h5,
+        [data-testid="stDialog"] h6,
+        [data-testid="stDialog"] p,
+        [data-testid="stDialog"] li,
+        [data-testid="stDialog"] strong {
+            color: #18221c !important;
+        }
+        [data-testid="stDialog"] hr,
+        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] h2 {
+            border-color: rgba(26, 51, 37, 0.12) !important;
         }
         .stButton > button:focus-visible,
         .stDownloadButton > button:focus-visible,
@@ -1407,7 +1422,7 @@ def render_theme_overrides(theme_mode):
         .biodata-trust-item small,
         .biodata-card-label,
         .biodata-card-helper {
-            color: rgba(27, 45, 35, 0.62) !important;
+            color: rgba(27, 45, 35, 0.70) !important;
         }
         .biodata-trust-item strong,
         .biodata-result-overview-card strong,
