@@ -33,6 +33,8 @@ aplicación, incluso antes de cargar un archivo.
 - Gráficos de valores reales, predicciones y residuos.
 - Casos con mayor error y comparación de rendimiento por grupos categóricos.
 - Importancia predictiva por permutación sobre las variables originales.
+- Predicción de observaciones nuevas con el modelo seleccionado, reutilizando el
+  mismo preprocesamiento y mostrando advertencias de extrapolación.
 - Advertencias automáticas mediante reglas transparentes.
 - Informe descargable con contexto, diagnóstico y recomendaciones.
 
@@ -59,6 +61,9 @@ streamlit run app.py
 
 Subí un dataset, abrí **Modelos**, elegí una variable objetivo numérica y
 presioná **Analizar y comparar modelos**.
+
+Después de revisar el rendimiento, podés completar **Predecir una observación
+nueva** para estimar el objetivo de un caso que no estaba en el dataset.
 
 El idioma y la apariencia pueden cambiarse desde **Preferencias** en la barra
 lateral. El archivo cargado y los resultados de la sesión se conservan al
@@ -97,6 +102,7 @@ app.py
   ├─ calidad y exploración        src/data_quality.py · src/eda.py
   ├─ preparación y entrenamiento  src/preprocessing.py · src/modeling.py
   ├─ evaluación                   src/evaluation.py
+  ├─ aplicación a casos nuevos    src/inference.py
   ├─ diagnóstico y explicabilidad src/diagnostics.py
   ├─ informe descargable          src/report.py
   ├─ interfaz bilingüe            src/i18n.py
@@ -138,6 +144,7 @@ Referencias oficiales:
 
 - Solo se admiten objetivos numéricos de regresión.
 - No se calculan intervalos de predicción individuales.
+- El modelo para observaciones nuevas se conserva solo durante la sesión.
 - La importancia de variables es global y no explica cada predicción particular.
 - Una validación interna no reemplaza una evaluación con datos externos.
 - Los resultados predictivos no demuestran causalidad.
@@ -145,5 +152,5 @@ Referencias oficiales:
 ## Estado
 
 Versión gratuita funcional para análisis, comparación, diagnóstico,
-interpretación e informe de modelos de regresión, publicada en Streamlit
-Community Cloud.
+interpretación, predicción de observaciones nuevas e informe de modelos de
+regresión, publicada en Streamlit Community Cloud.

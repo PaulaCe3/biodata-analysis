@@ -14,7 +14,8 @@ Para completar un primer análisis:
 6. Conservá solo los predictores que estarían disponibles al realizar una predicción real.
 7. Presioná **Analizar y comparar modelos**.
 8. Leé las métricas, los diagnósticos y las limitaciones.
-9. Descargá el informe para conservar el resultado.
+9. Si necesitás estudiar un caso nuevo, completá **Predecir una observación nueva**.
+10. Descargá el informe para conservar el resultado.
 
 ## 1. Qué tipo de datos admite
 
@@ -211,6 +212,21 @@ Antes de usar el modelo:
 
 El modelo puede ayudar a ordenar, priorizar o revisar casos. No debería tomar decisiones importantes por sí solo.
 
+### Predecir una observación nueva
+
+Después de evaluar el modelo ganador con el conjunto de prueba reservado, Biodata vuelve a ajustarlo utilizando todos los casos válidos. Ese modelo final queda disponible durante la sesión para estimar el objetivo de una observación que no formaba parte del dataset.
+
+1. Buscá la sección **Predecir una observación nueva** dentro de **Modelos**.
+2. Ingresá las mediciones y categorías disponibles para el caso nuevo.
+3. Conservá las mismas unidades y definiciones utilizadas en el dataset original.
+4. Dejá vacío un campo solamente cuando ese dato sea realmente desconocido. Biodata aplicará la misma imputación utilizada durante el entrenamiento.
+5. Presioná **Estimar nuevo caso**.
+6. Leé la estimación junto con el MAE, el error P90 y las advertencias mostradas.
+
+Biodata avisa si una medición está fuera del rango observado, si una categoría no apareció durante el entrenamiento, si faltan predictores o si la estimación queda fuera del rango conocido del objetivo. En esas situaciones, el modelo está trabajando con menos referencia y el error puede aumentar.
+
+El MAE y el error P90 describen el rendimiento general del conjunto de prueba; no son un intervalo de certeza para ese caso particular. La estimación permanece en la memoria de la sesión y desaparece al cerrar o reiniciar la aplicación.
+
 ## 11. Informe descargable
 
 El informe reúne el perfil y la calidad del dataset, el contexto, la comparación de modelos, la evaluación final, los diagnósticos, la importancia predictiva, la interpretación y las limitaciones.
@@ -228,6 +244,7 @@ Limitaciones actuales:
 - Solo admite objetivos numéricos de regresión.
 - La validación es interna y no reemplaza una prueba externa.
 - No calcula intervalos individuales de incertidumbre.
+- El modelo para casos nuevos permanece disponible solo durante la sesión actual.
 - No demuestra relaciones causales.
 - No reemplaza la revisión de una persona especialista en el área.
 
@@ -268,6 +285,7 @@ Actualizá la página, quitá y volvé a cargar el archivo. Si continúa, anotá
 - **Sobreajuste:** buen rendimiento en los datos conocidos y pobre rendimiento en datos nuevos.
 - **Fuga de información:** uso accidental de información que no estaría disponible al predecir.
 - **Regresión:** modelado de un objetivo numérico continuo.
+- **Inferencia:** uso de un modelo ya entrenado para estimar el objetivo de una observación nueva.
 - **Causalidad:** relación en la que un cambio produce otro; una predicción no la demuestra.
 
 ## Lista final antes de decidir
@@ -279,6 +297,7 @@ Actualizá la página, quitá y volvé a cargar el archivo. Si continúa, anotá
 - [ ] Definí un error aceptable antes de mirar el resultado.
 - [ ] Revisé MAE, RMSE, R² y P90.
 - [ ] Revisé errores grandes y grupos relevantes.
+- [ ] Los casos nuevos usan las mismas variables, definiciones y unidades del entrenamiento.
 - [ ] Entiendo que importancia predictiva no significa causalidad.
 - [ ] Voy a validar el modelo con datos nuevos.
 - [ ] Mantendré supervisión humana para decisiones importantes.

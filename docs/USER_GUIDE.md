@@ -12,7 +12,8 @@ Biodata is a web application for exploring tabular data, reviewing data quality 
 6. Keep only predictors that would be available when making a real prediction.
 7. Select **Analyze and compare models**.
 8. Review metrics, diagnostics and limitations.
-9. Download the report to preserve the result.
+9. To study a new case, complete **Predict a new observation**.
+10. Download the report to preserve the result.
 
 ## 1. Supported data
 
@@ -168,6 +169,21 @@ Before using a model:
 
 The model can support ordering, prioritization or case review. It should not make important decisions by itself.
 
+### Predicting a new observation
+
+After evaluating the winning model on the held-out test set, Biodata fits it again using all valid cases. This final model remains available during the session and can estimate the target for an observation that was not part of the dataset.
+
+1. Find **Predict a new observation** under **Models**.
+2. Enter the measurements and categories available for the new case.
+3. Use the same units and definitions as the original dataset.
+4. Leave a field empty only when the value is genuinely unknown. Biodata will apply the same imputation used during training.
+5. Select **Estimate new case**.
+6. Read the estimate together with MAE, P90 error and any displayed warnings.
+
+Biodata warns when a measurement falls outside the observed range, a category was absent from training, predictors are missing or the estimate falls outside the known target range. In these situations, the model has less relevant reference information and its error may increase.
+
+MAE and P90 error describe overall test-set performance; they are not a certainty interval for that particular case. The estimate remains in session memory and disappears when the application is closed or restarted.
+
 ## 11. Downloadable report
 
 The report includes the dataset profile, quality findings, analysis context, model comparison, final evaluation, diagnostics, predictive importance, practical interpretation and limitations.
@@ -185,6 +201,7 @@ Current limitations:
 - Only numeric regression targets are supported.
 - Internal validation does not replace external validation.
 - Individual prediction intervals are not calculated.
+- The model for new cases remains available only during the current session.
 - Predictive results do not establish causation.
 - Domain-expert review is still required.
 
@@ -225,6 +242,7 @@ Refresh the page, remove the file and upload it again. If the error continues, r
 - **Overfitting:** strong performance on known data and poor performance on new data.
 - **Data leakage:** accidental use of information that would not exist at prediction time.
 - **Regression:** modeling a continuous numeric target.
+- **Inference:** using a trained model to estimate the target for a new observation.
 - **Causation:** a relationship in which one change produces another; prediction alone does not prove it.
 
 ## Final checklist
@@ -236,6 +254,7 @@ Refresh the page, remove the file and upload it again. If the error continues, r
 - [ ] I defined an acceptable error before reviewing results.
 - [ ] I reviewed MAE, RMSE, R² and P90.
 - [ ] I reviewed large errors and relevant groups.
+- [ ] New cases use the same variables, definitions and units as training.
 - [ ] I understand that predictive importance is not causation.
 - [ ] I will validate with new data.
 - [ ] Important decisions will retain human oversight.

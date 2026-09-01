@@ -195,6 +195,7 @@ from src.modeling import (
     train_regression_model
 )
 from sklearn.dummy import DummyRegressor
+from sklearn.base import clone
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import (
     RandomForestRegressor,
@@ -230,6 +231,12 @@ if "language" not in signature(report_module.build_full_report).parameters:
 
 from src.report import build_full_report
 from src.i18n import model_label, translate
+from src.inference import (
+    assess_observation,
+    build_feature_profiles,
+    build_observation,
+    predict_observation
+)
 from src.plot_style import apply_figure_theme
 
 
@@ -327,6 +334,280 @@ def format_spanish_number(value, decimals=2):
 
     formatted = f"{value:.{decimals}f}"
     return formatted.replace(".", ",") if current_language() == "es" else formatted
+
+
+def render_new_observation_prediction(
+    analysis_result,
+    target_column,
+    analysis_id
+):
+    """Permite aplicar el modelo evaluado a una observación nueva."""
+
+    required_keys = {
+        "production_model",
+        "feature_profiles",
+        "feature_order",
+        "target_minimum",
+        "target_maximum"
+    }
+
+    st.divider()
+    st.markdown(f"### {tr('Predecir una observación nueva')}")
+    st.caption(
+        tr(
+            "Ingresá las mediciones o características de un caso nuevo. Biodata aplicará la misma preparación utilizada durante el entrenamiento y estimará {target}.",
+            target=format_variable_label(target_column).lower()
+        )
+    )
+    st.caption(
+        tr(
+            "Para esta etapa, el modelo seleccionado se ajustó nuevamente con todos los casos válidos. Las métricas mostradas siguen proviniendo del conjunto de prueba reservado."
+        )
+    )
+
+    if not required_keys.issubset(analysis_result):
+        st.info(
+            tr(
+                "Volvé a ejecutar el análisis para habilitar predicciones con casos nuevos."
+            )
+        )
+        return
+
+    if analysis_result["evaluation_summary"]["r2"] < 0:
+        st.warning(
+            tr(
+                "En la prueba, este modelo rindió peor que una estimación basada en el promedio. Podés explorar un caso, pero no conviene utilizar la predicción para decidir."
+            )
+        )
+
+    st.info(
+        tr(
+            "Usá las mismas unidades y definiciones del dataset original. Los campos vacíos se completarán con la referencia aprendida durante el entrenamiento."
+        )
+    )
+
+    feature_profiles = analysis_result["feature_profiles"]
+    feature_order = analysis_result["feature_order"]
+    analysis_token = (
+        f"{str(analysis_id[0])[:16]}_{target_column}_{len(feature_order)}"
+    )
+    entered_values = {}
+
+    with st.form(
+        key=f"biodata_new_observation_form_{analysis_token}",
+        border=True
+    ):
+        st.markdown(f"#### {tr('Datos del nuevo caso')}")
+        st.caption(
+            tr(
+                "Completá solamente la información que realmente conocés antes de obtener el resultado."
+            )
+        )
+
+        input_columns = st.columns(2)
+
+        for index, feature in enumerate(feature_order):
+            profile = feature_profiles[feature]
+
+            with input_columns[index % 2]:
+                if profile["kind"] == "numeric":
+                    integer_like = profile["integer_like"]
+                    minimum_text = format_spanish_number(
+                        profile["minimum"],
+                        0 if integer_like else 3
+                    )
+                    maximum_text = format_spanish_number(
+                        profile["maximum"],
+                        0 if integer_like else 3
+                    )
+                    entered_values[feature] = st.number_input(
+                        format_variable_label(feature),
+                        value=None,
+                        step=(1 if integer_like else profile["step"]),
+                        format=("%d" if integer_like else "%.6f"),
+                        placeholder=tr("Ingresá un valor o dejalo vacío"),
+                        help=tr(
+                            "Rango observado durante el entrenamiento: {minimum} a {maximum}.",
+                            minimum=minimum_text,
+                            maximum=maximum_text
+                        ),
+                        key=f"biodata_new_value_{analysis_token}_{feature}"
+                    )
+                else:
+                    entered_values[feature] = st.selectbox(
+                        format_variable_label(feature),
+                        options=profile["categories"],
+                        index=None,
+                        format_func=lambda value: str(value),
+                        placeholder=tr("Seleccioná o escribí un valor"),
+                        accept_new_options=True,
+                        help=tr(
+                            "Podés elegir una categoría conocida, escribir una nueva o dejar el campo vacío."
+                        ),
+                        key=f"biodata_new_value_{analysis_token}_{feature}"
+                    )
+
+        predict_clicked = st.form_submit_button(
+            tr("Estimar nuevo caso"),
+            type="primary",
+            width="stretch"
+        )
+
+    prediction_state_key = "biodata_new_observation_result"
+
+    if predict_clicked:
+        observation = build_observation(feature_order, entered_values)
+        assessment = assess_observation(observation, feature_profiles)
+
+        if assessment["provided_count"] == 0:
+            st.session_state.pop(prediction_state_key, None)
+            st.error(
+                tr(
+                    "Ingresá al menos un dato del caso nuevo antes de solicitar la estimación."
+                )
+            )
+        else:
+            try:
+                predicted_value = predict_observation(
+                    analysis_result["production_model"],
+                    observation
+                )
+            except (TypeError, ValueError):
+                st.session_state.pop(prediction_state_key, None)
+                st.error(
+                    tr(
+                        "No se pudo calcular la estimación con los valores ingresados. Revisá los datos y volvé a intentarlo."
+                    )
+                )
+            else:
+                st.session_state[prediction_state_key] = {
+                    "analysis_id": analysis_id,
+                    "prediction": predicted_value,
+                    "observation": observation,
+                    "assessment": assessment
+                }
+
+    prediction_result = st.session_state.get(prediction_state_key)
+
+    if (
+        prediction_result is None
+        or prediction_result.get("analysis_id") != analysis_id
+    ):
+        st.caption(
+            tr(
+                "La estimación estará disponible mientras esta sesión de Biodata permanezca abierta."
+            )
+        )
+        return
+
+    predicted_value = prediction_result["prediction"]
+    assessment = prediction_result["assessment"]
+    target_label = format_variable_label(target_column)
+    prediction_text = format_spanish_number(predicted_value, decimals=3)
+    mae_text = format_spanish_number(
+        analysis_result["evaluation_summary"]["mae"],
+        decimals=3
+    )
+    p90_text = format_spanish_number(
+        analysis_result["diagnostics_summary"]["p90_absolute_error"],
+        decimals=3
+    )
+
+    st.markdown(
+        f"""
+        <div class="biodata-single-prediction" role="status" aria-live="polite">
+            <div class="biodata-single-prediction-primary">
+                <span>{tr("Estimación de {target}", target=escape(target_label))}</span>
+                <strong>{prediction_text}</strong>
+                <small>{tr("En las mismas unidades utilizadas en el dataset")}</small>
+            </div>
+            <div class="biodata-single-prediction-context">
+                <span>{tr("Referencia en datos de prueba")}</span>
+                <strong>MAE {mae_text}</strong>
+                <small>{tr("El 90 % de los errores fue igual o menor a {p90}. No es un intervalo individual.", p90=p90_text)}</small>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    def readable_features(features):
+        return ", ".join(
+            format_variable_label(feature)
+            for feature in features
+        )
+
+    if assessment["missing_features"]:
+        st.warning(
+            tr(
+                "No se ingresaron valores para: {variables}. Biodata los completó con la mediana o la categoría más frecuente del entrenamiento; la estimación puede ser menos representativa.",
+                variables=readable_features(assessment["missing_features"])
+            )
+        )
+
+    if assessment["out_of_range_features"]:
+        st.warning(
+            tr(
+                "Estas variables están fuera del rango observado durante el entrenamiento: {variables}. El modelo está extrapolando y el error puede ser mayor.",
+                variables=readable_features(
+                    assessment["out_of_range_features"]
+                )
+            )
+        )
+
+    if assessment["unseen_categories"]:
+        st.warning(
+            tr(
+                "Estas categorías no aparecían en el entrenamiento: {variables}. El modelo puede aprovechar menos información para este caso.",
+                variables=readable_features(assessment["unseen_categories"])
+            )
+        )
+
+    if not any(
+        assessment[key]
+        for key in (
+            "missing_features",
+            "out_of_range_features",
+            "unseen_categories"
+        )
+    ):
+        st.success(
+            tr(
+                "Los valores ingresados están dentro de las referencias observadas durante el entrenamiento."
+            )
+        )
+
+    if (
+        predicted_value < analysis_result["target_minimum"]
+        or predicted_value > analysis_result["target_maximum"]
+    ):
+        st.warning(
+            tr(
+                "La estimación queda fuera del rango conocido de la variable objetivo. Interpretala con especial cautela."
+            )
+        )
+
+    with st.expander(tr("Ver los datos utilizados en esta estimación")):
+        display_observation = prediction_result["observation"].copy()
+        display_observation.columns = [
+            format_variable_label(column)
+            for column in display_observation.columns
+        ]
+        display_observation = display_observation.astype(object).where(
+            display_observation.notna(),
+            tr("Sin dato")
+        )
+        st.dataframe(
+            display_observation,
+            width="stretch",
+            hide_index=True
+        )
+
+    st.caption(
+        tr(
+            "Esta es una estimación estadística, no una medición confirmada ni una explicación causal. Para decisiones importantes, contrastala con observaciones reales y criterio especializado."
+        )
+    )
 
 
 def render_preferences():
@@ -884,7 +1165,7 @@ def render_global_styles():
             border-top: 1px solid rgba(250, 250, 250, 0.10);
             display: grid;
             gap: 0.5rem;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             margin: 1rem 0 1.8rem;
             padding: 0.8rem 0;
         }
@@ -997,6 +1278,54 @@ def render_global_styles():
             line-height: 1.15;
             margin: 0.55rem 0 0.35rem;
             overflow-wrap: anywhere;
+        }
+        .biodata-single-prediction {
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(61, 220, 132, 0.10),
+                    rgba(255, 255, 255, 0.025)
+                );
+            border: 1px solid rgba(101, 230, 160, 0.28);
+            border-radius: 14px;
+            display: grid;
+            gap: 0;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        .biodata-single-prediction-primary,
+        .biodata-single-prediction-context {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 148px;
+            padding: 1.1rem 1.25rem;
+        }
+        .biodata-single-prediction-primary {
+            border-right: 1px solid rgba(236, 245, 240, 0.10);
+        }
+        .biodata-single-prediction span {
+            color: rgba(250, 250, 250, 0.64);
+            font-size: 0.76rem;
+            font-weight: 750;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .biodata-single-prediction strong {
+            color: #ffffff;
+            font-size: clamp(1.5rem, 3vw, 2.35rem);
+            line-height: 1.1;
+            margin: 0.55rem 0 0.45rem;
+            overflow-wrap: anywhere;
+        }
+        .biodata-single-prediction-context strong {
+            font-size: 1.25rem;
+        }
+        .biodata-single-prediction small {
+            color: rgba(250, 250, 250, 0.66);
+            font-size: 0.82rem;
+            line-height: 1.5;
         }
         .stButton > button,
         .stDownloadButton > button {
@@ -1278,6 +1607,13 @@ def render_global_styles():
             .biodata-result-overview {
                 grid-template-columns: 1fr;
             }
+            .biodata-single-prediction {
+                grid-template-columns: 1fr;
+            }
+            .biodata-single-prediction-primary {
+                border-bottom: 1px solid rgba(236, 245, 240, 0.10);
+                border-right: none;
+            }
             .biodata-result-overview-card {
                 min-height: auto;
             }
@@ -1495,10 +1831,26 @@ def render_theme_overrides(theme_mode):
         .biodata-trust-item strong,
         .biodata-result-overview-card strong,
         .biodata-test-metric strong,
+        .biodata-single-prediction strong,
         .biodata-card-value,
         .biodata-reading-card h5,
         .biodata-reading-card p {
             color: #18221c !important;
+        }
+        .biodata-single-prediction {
+            background: linear-gradient(
+                135deg,
+                rgba(22, 138, 79, 0.10),
+                rgba(255, 255, 255, 0.84)
+            );
+            border-color: rgba(22, 138, 79, 0.28);
+        }
+        .biodata-single-prediction-primary {
+            border-color: rgba(26, 51, 37, 0.12);
+        }
+        .biodata-single-prediction span,
+        .biodata-single-prediction small {
+            color: rgba(27, 45, 35, 0.70) !important;
         }
         .biodata-start-note {
             background: rgba(22, 138, 79, 0.07);
@@ -2445,6 +2797,9 @@ with tab_model:
             <div class="biodata-model-flow-item">
                 <span>4</span><strong>{tr("Comparación")}</strong>
             </div>
+            <div class="biodata-model-flow-item">
+                <span>5</span><strong>{tr("Aplicación")}</strong>
+            </div>
         </div>
         """,
         unsafe_allow_html=True
@@ -2822,6 +3177,16 @@ with tab_model:
                     .get_feature_names_out()
                 )
 
+                # Una vez terminada la evaluación independiente, el modelo
+                # seleccionado se reajusta con todos los casos válidos para
+                # aprovechar la información disponible al predecir casos nuevos.
+                production_model = clone(trained_model).fit(X, y)
+                feature_profiles = build_feature_profiles(
+                    X,
+                    numeric_features,
+                    categorical_features
+                )
+
             st.session_state["biodata_modeling_result"] = {
                 "analysis_id": analysis_id,
                 "model_results": model_results,
@@ -2834,7 +3199,12 @@ with tab_model:
                 "language": current_language(),
                 "n_train": len(X_train),
                 "n_test": len(X_test),
-                "processed_feature_count": processed_feature_count
+                "processed_feature_count": processed_feature_count,
+                "production_model": production_model,
+                "feature_profiles": feature_profiles,
+                "feature_order": list(selected_features),
+                "target_minimum": float(y.min()),
+                "target_maximum": float(y.max())
             }
 
         analysis_result = st.session_state.get("biodata_modeling_result")
@@ -2970,6 +3340,12 @@ with tab_model:
                 st.success(
                     tr("No se activaron advertencias con las reglas diagnósticas actuales.")
                 )
+
+            render_new_observation_prediction(
+                analysis_result,
+                target_column,
+                analysis_id
+            )
 
             st.markdown(f"#### {tr('Diagnóstico del modelo')}")
             st.caption(

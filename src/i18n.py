@@ -119,6 +119,7 @@ ENGLISH = {
     "Resumen del dataset": "Dataset overview",
     "Observaciones": "Observations",
     "Variables": "Variables",
+    "Variable": "Variable",
     "Valores faltantes": "Missing values",
     "Filas duplicadas": "Duplicate rows",
     "Vista previa de datos": "Data preview",
@@ -181,6 +182,7 @@ ENGLISH = {
     "Predictores": "Predictors",
     "Contexto": "Context",
     "Comparación": "Comparison",
+    "Aplicación": "Application",
     "No hay una variable objetivo numérica con al menos 10 valores válidos y dos valores diferentes.": (
         "There is no numeric target with at least 10 valid values and two distinct values."
     ),
@@ -281,6 +283,73 @@ ENGLISH = {
     ),
     "No se activaron advertencias con las reglas diagnósticas actuales.": (
         "No warnings were triggered by the current diagnostic rules."
+    ),
+    "Predecir una observación nueva": "Predict a new observation",
+    "Ingresá las mediciones o características de un caso nuevo. Biodata aplicará la misma preparación utilizada durante el entrenamiento y estimará {target}.": (
+        "Enter the measurements or characteristics of a new case. Biodata will apply the same preparation used during training and estimate {target}."
+    ),
+    "Para esta etapa, el modelo seleccionado se ajustó nuevamente con todos los casos válidos. Las métricas mostradas siguen proviniendo del conjunto de prueba reservado.": (
+        "For this stage, the selected model was fitted again using all valid cases. The displayed metrics still come from the held-out test set."
+    ),
+    "Volvé a ejecutar el análisis para habilitar predicciones con casos nuevos.": (
+        "Run the analysis again to enable predictions for new cases."
+    ),
+    "En la prueba, este modelo rindió peor que una estimación basada en el promedio. Podés explorar un caso, pero no conviene utilizar la predicción para decidir.": (
+        "On the test set, this model performed worse than a mean-based estimate. You can explore a case, but the prediction should not be used for decision-making."
+    ),
+    "Usá las mismas unidades y definiciones del dataset original. Los campos vacíos se completarán con la referencia aprendida durante el entrenamiento.": (
+        "Use the same units and definitions as the original dataset. Empty fields will be filled using the reference learned during training."
+    ),
+    "Datos del nuevo caso": "New case data",
+    "Completá solamente la información que realmente conocés antes de obtener el resultado.": (
+        "Enter only the information that is genuinely available before the outcome is known."
+    ),
+    "Ingresá un valor o dejalo vacío": "Enter a value or leave it empty",
+    "Rango observado durante el entrenamiento: {minimum} a {maximum}.": (
+        "Range observed during training: {minimum} to {maximum}."
+    ),
+    "Seleccioná o escribí un valor": "Select or enter a value",
+    "Podés elegir una categoría conocida, escribir una nueva o dejar el campo vacío.": (
+        "You can select a known category, enter a new one or leave the field empty."
+    ),
+    "Estimar nuevo caso": "Estimate new case",
+    "Ingresá al menos un dato del caso nuevo antes de solicitar la estimación.": (
+        "Enter at least one value for the new case before requesting an estimate."
+    ),
+    "No se pudo calcular la estimación con los valores ingresados. Revisá los datos y volvé a intentarlo.": (
+        "The estimate could not be calculated from the entered values. Review the data and try again."
+    ),
+    "La estimación estará disponible mientras esta sesión de Biodata permanezca abierta.": (
+        "The estimate will remain available while this Biodata session stays open."
+    ),
+    "Estimación de {target}": "Estimated {target}",
+    "En las mismas unidades utilizadas en el dataset": (
+        "In the same units used in the dataset"
+    ),
+    "Referencia en datos de prueba": "Test-set reference",
+    "El 90 % de los errores fue igual o menor a {p90}. No es un intervalo individual.": (
+        "Ninety percent of errors were at or below {p90}. This is not an individual interval."
+    ),
+    "No se ingresaron valores para: {variables}. Biodata los completó con la mediana o la categoría más frecuente del entrenamiento; la estimación puede ser menos representativa.": (
+        "No values were entered for: {variables}. Biodata filled them using the training median or most frequent category, so the estimate may be less representative."
+    ),
+    "Estas variables están fuera del rango observado durante el entrenamiento: {variables}. El modelo está extrapolando y el error puede ser mayor.": (
+        "These variables fall outside the range observed during training: {variables}. The model is extrapolating and the error may be larger."
+    ),
+    "Estas categorías no aparecían en el entrenamiento: {variables}. El modelo puede aprovechar menos información para este caso.": (
+        "These categories were not present during training: {variables}. The model may have less useful information for this case."
+    ),
+    "Los valores ingresados están dentro de las referencias observadas durante el entrenamiento.": (
+        "The entered values are within the references observed during training."
+    ),
+    "La estimación queda fuera del rango conocido de la variable objetivo. Interpretala con especial cautela.": (
+        "The estimate falls outside the known target range. Interpret it with particular caution."
+    ),
+    "Ver los datos utilizados en esta estimación": (
+        "View the data used for this estimate"
+    ),
+    "Esta es una estimación estadística, no una medición confirmada ni una explicación causal. Para decisiones importantes, contrastala con observaciones reales y criterio especializado.": (
+        "This is a statistical estimate, not a confirmed measurement or a causal explanation. For important decisions, compare it with real observations and specialist judgment."
     ),
     "Posible sesgo sistemático": "Possible systematic bias",
     "subestimar": "underestimate",

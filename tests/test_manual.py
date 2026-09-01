@@ -13,6 +13,7 @@ class ManualTests(unittest.TestCase):
 
         self.assertIn("## Recorrido rápido", content)
         self.assertIn("## 8. Cómo interpretar las métricas", content)
+        self.assertIn("### Predecir una observación nueva", content)
         self.assertIn("## 12. Privacidad y límites", content)
         self.assertIn("## Glosario esencial", content)
 
@@ -23,6 +24,7 @@ class ManualTests(unittest.TestCase):
 
         self.assertIn("## Quick workflow", content)
         self.assertIn("## 8. Metrics", content)
+        self.assertIn("### Predicting a new observation", content)
         self.assertIn("## 12. Privacy and limitations", content)
         self.assertIn("## Essential glossary", content)
 
