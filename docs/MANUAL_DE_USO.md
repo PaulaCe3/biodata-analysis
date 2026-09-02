@@ -214,18 +214,33 @@ El modelo puede ayudar a ordenar, priorizar o revisar casos. No debería tomar d
 
 ### Predecir una observación nueva
 
-Después de evaluar el modelo ganador con el conjunto de prueba reservado, Biodata vuelve a ajustarlo utilizando todos los casos válidos. Ese modelo final queda disponible durante la sesión para estimar el objetivo de una observación que no formaba parte del dataset.
+Esta sección sirve para estudiar **un solo caso que recolectaste después del análisis**. Una observación nueva puede ser un animal medido en campo, una planta muestreada, una muestra de laboratorio o cualquier otro registro con las mismas variables del dataset.
+
+Por ejemplo: si entrenaste un modelo con medidas de muchas plantas y luego medís una planta nueva, podés ingresar esas medidas para obtener una estimación de la variable objetivo. No necesitás agregar esa fila al archivo ni volver a ejecutar todo el análisis.
+
+#### Cómo usarla
 
 1. Buscá la sección **Predecir una observación nueva** dentro de **Modelos**.
-2. Ingresá las mediciones y categorías disponibles para el caso nuevo.
-3. Conservá las mismas unidades y definiciones utilizadas en el dataset original.
-4. Dejá vacío un campo solamente cuando ese dato sea realmente desconocido. Biodata aplicará la misma imputación utilizada durante el entrenamiento.
-5. Presioná **Estimar nuevo caso**.
-6. Leé la estimación junto con el MAE, el error P90 y las advertencias mostradas.
+2. Leé el recuadro inicial: allí se recuerda qué representa un caso nuevo y cuál es la variable que se estimará.
+3. En **Paso 1**, ingresá las mediciones y categorías que conozcas. Debajo de cada campo aparece el tipo de dato y, cuando corresponde, el rango observado en el dataset.
+4. Usá las mismas unidades y definiciones del archivo original. Si una longitud estaba expresada en milímetros, ingresala también en milímetros.
+5. Si realmente no conocés un dato, dejá el campo vacío. Biodata podrá calcular igualmente usando un valor habitual del entrenamiento, pero te avisará que el resultado puede ser menos representativo.
+6. Presioná **Calcular estimación**.
+7. En **Paso 2**, leé primero el valor estimado y después la explicación del error observado durante las pruebas.
+8. Revisá todas las advertencias antes de utilizar el resultado.
+
+#### Cómo interpretar el resultado
+
+- **Valor estimado:** es el resultado calculado por el modelo para el caso ingresado. No es una medición confirmada.
+- **Error promedio:** indica cuánto se alejaron, en promedio, las predicciones de los valores reales cuando Biodata probó el modelo con datos reservados.
+- **Referencia de 9 de cada 10 casos:** indica un error que no fue superado en el 90 % de los casos de prueba. No garantiza el error de esta observación particular.
+- **Advertencias:** explican si faltan datos, si una medición está fuera del rango conocido o si una categoría es nueva para el modelo. Cada advertencia indica también qué conviene revisar.
 
 Biodata avisa si una medición está fuera del rango observado, si una categoría no apareció durante el entrenamiento, si faltan predictores o si la estimación queda fuera del rango conocido del objetivo. En esas situaciones, el modelo está trabajando con menos referencia y el error puede aumentar.
 
-El MAE y el error P90 describen el rendimiento general del conjunto de prueba; no son un intervalo de certeza para ese caso particular. La estimación permanece en la memoria de la sesión y desaparece al cerrar o reiniciar la aplicación.
+Si querés analizar otra observación, presioná **Cargar otro caso**. La estimación permanece en la memoria de la sesión y desaparece al cerrar o reiniciar la aplicación.
+
+Después de evaluar el modelo ganador con el conjunto de prueba reservado, Biodata vuelve a ajustarlo utilizando todos los casos válidos. Ese modelo final queda disponible durante la sesión. El caso nuevo no modifica el dataset original ni los resultados anteriores.
 
 ## 11. Informe descargable
 

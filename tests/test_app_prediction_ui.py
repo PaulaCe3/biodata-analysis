@@ -46,6 +46,14 @@ class PredictionInterfaceTests(unittest.TestCase):
             "Predecir una observación nueva" in markdown.value
             for markdown in app.markdown
         ))
+        self.assertTrue(any(
+            "¿Qué podés hacer en esta sección?" in markdown.value
+            for markdown in app.markdown
+        ))
+        self.assertTrue(any(
+            "Paso 1 de 2" in markdown.value
+            for markdown in app.markdown
+        ))
 
         next(
             widget
@@ -65,14 +73,59 @@ class PredictionInterfaceTests(unittest.TestCase):
         next(
             button
             for button in app.button
-            if button.label == "Estimar nuevo caso"
+            if button.label == "Calcular estimación"
         ).click().run(timeout=60)
 
         self.assertFalse(app.exception)
         self.assertTrue(any(
-            "biodata-single-prediction" in markdown.value
+            '<div class="biodata-single-prediction" role="status"'
+            in markdown.value
             for markdown in app.markdown
         ))
+
+        self.assertTrue(any(
+            "¿Cómo leer este resultado?" in markdown.value
+            for markdown in app.markdown
+        ))
+
+        next(
+            button
+            for button in app.button
+            if button.label == "Cargar otro caso"
+        ).click().run(timeout=60)
+
+        self.assertFalse(app.exception)
+        self.assertFalse(any(
+            '<div class="biodata-single-prediction" role="status"'
+            in markdown.value
+            for markdown in app.markdown
+        ))
+        self.assertIsNone(next(
+            widget
+            for widget in app.number_input
+            if widget.label == "Measurement"
+        ).value)
+
+        next(
+            widget
+            for widget in app.number_input
+            if widget.label == "Measurement"
+        ).set_value(16.5)
+        next(
+            widget
+            for widget in app.number_input
+            if widget.label == "Size"
+        ).set_value(46)
+        next(
+            widget
+            for widget in app.selectbox
+            if widget.label == "Group"
+        ).select("A")
+        next(
+            button
+            for button in app.button
+            if button.label == "Calcular estimación"
+        ).click().run(timeout=60)
 
         next(
             control
@@ -86,7 +139,12 @@ class PredictionInterfaceTests(unittest.TestCase):
             for markdown in app.markdown
         ))
         self.assertTrue(any(
-            "biodata-single-prediction" in markdown.value
+            "How should you read this result?" in markdown.value
+            for markdown in app.markdown
+        ))
+        self.assertTrue(any(
+            '<div class="biodata-single-prediction" role="status"'
+            in markdown.value
             for markdown in app.markdown
         ))
 

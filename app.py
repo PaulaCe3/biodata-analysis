@@ -353,17 +353,39 @@ def render_new_observation_prediction(
 
     st.divider()
     st.markdown(f"### {tr('Predecir una observación nueva')}")
-    st.caption(
-        tr(
-            "Ingresá las mediciones o características de un caso nuevo. Biodata aplicará la misma preparación utilizada durante el entrenamiento y estimará {target}.",
-            target=format_variable_label(target_column).lower()
+    target_label = format_variable_label(target_column)
+
+    with st.container(border=True):
+        st.markdown(f"#### {tr('¿Qué podés hacer en esta sección?')}")
+        st.write(
+            tr(
+                "Una observación nueva es un solo individuo, muestra o registro que no estaba en el archivo original. Por ejemplo, puede ser un animal medido en campo, una planta muestreada o una muestra de laboratorio."
+            )
         )
-    )
-    st.caption(
-        tr(
-            "Para esta etapa, el modelo seleccionado se ajustó nuevamente con todos los casos válidos. Las métricas mostradas siguen proviniendo del conjunto de prueba reservado."
+        st.write(
+            tr(
+                "Completá los datos que conozcas y Biodata usará el modelo ya entrenado para estimar {target}.",
+                target=target_label.lower()
+            )
         )
-    )
+
+        st.markdown(
+            tr(
+                "**Antes de empezar:** usá las mismas unidades del dataset, ingresá únicamente datos disponibles para este caso y dejá vacío lo que realmente no conozcas."
+            )
+        )
+
+    with st.expander(tr("Cómo obtiene Biodata esta estimación")):
+        st.write(
+            tr(
+                "Biodata conserva el modelo que obtuvo el mejor resultado y vuelve a entrenarlo con todos los casos válidos del dataset. Después aplica a este caso la misma preparación utilizada durante el análisis."
+            )
+        )
+        st.caption(
+            tr(
+                "El caso nuevo no se agrega al dataset original ni cambia los resultados del análisis. Las métricas de referencia siguen proviniendo del conjunto de prueba reservado."
+            )
+        )
 
     if not required_keys.issubset(analysis_result):
         st.info(
@@ -380,27 +402,27 @@ def render_new_observation_prediction(
             )
         )
 
-    st.info(
-        tr(
-            "Usá las mismas unidades y definiciones del dataset original. Los campos vacíos se completarán con la referencia aprendida durante el entrenamiento."
-        )
-    )
-
     feature_profiles = analysis_result["feature_profiles"]
     feature_order = analysis_result["feature_order"]
     analysis_token = (
         f"{str(analysis_id[0])[:16]}_{target_column}_{len(feature_order)}"
     )
     entered_values = {}
+    input_state_keys = [
+        f"biodata_new_value_{analysis_token}_{feature}"
+        for feature in feature_order
+    ]
 
     with st.form(
         key=f"biodata_new_observation_form_{analysis_token}",
         border=True
     ):
-        st.markdown(f"#### {tr('Datos del nuevo caso')}")
+        st.markdown(
+            f"#### {tr('Paso 1 de 2 · Completá los datos que conocés')}"
+        )
         st.caption(
             tr(
-                "Completá solamente la información que realmente conocés antes de obtener el resultado."
+                "Cada campo corresponde a una variable que el modelo necesita para calcular la estimación. Podés dejar campos vacíos si no tenés esa información."
             )
         )
 
@@ -433,6 +455,13 @@ def render_new_observation_prediction(
                         ),
                         key=f"biodata_new_value_{analysis_token}_{feature}"
                     )
+                    st.caption(
+                        tr(
+                            "Dato numérico. En el dataset se observaron valores entre {minimum} y {maximum}. Si no lo conocés, dejalo vacío.",
+                            minimum=minimum_text,
+                            maximum=maximum_text
+                        )
+                    )
                 else:
                     entered_values[feature] = st.selectbox(
                         format_variable_label(feature),
@@ -446,9 +475,20 @@ def render_new_observation_prediction(
                         ),
                         key=f"biodata_new_value_{analysis_token}_{feature}"
                     )
+                    st.caption(
+                        tr(
+                            "Dato de categoría. Elegí una opción, escribí otra si no aparece o dejá el campo vacío si no la conocés."
+                        )
+                    )
+
+        st.caption(
+            tr(
+                "Cuando termines, Biodata calculará una estimación sin modificar el archivo que cargaste."
+            )
+        )
 
         predict_clicked = st.form_submit_button(
-            tr("Estimar nuevo caso"),
+            tr("Calcular estimación"),
             type="primary",
             width="stretch"
         )
@@ -502,7 +542,6 @@ def render_new_observation_prediction(
 
     predicted_value = prediction_result["prediction"]
     assessment = prediction_result["assessment"]
-    target_label = format_variable_label(target_column)
     prediction_text = format_spanish_number(predicted_value, decimals=3)
     mae_text = format_spanish_number(
         analysis_result["evaluation_summary"]["mae"],
@@ -513,23 +552,45 @@ def render_new_observation_prediction(
         decimals=3
     )
 
+    st.markdown(f"#### {tr('Paso 2 de 2 · Revisá el resultado')}")
     st.markdown(
         f"""
         <div class="biodata-single-prediction" role="status" aria-live="polite">
             <div class="biodata-single-prediction-primary">
-                <span>{tr("Estimación de {target}", target=escape(target_label))}</span>
+                <span>{tr("Valor estimado de {target}", target=escape(target_label))}</span>
                 <strong>{prediction_text}</strong>
                 <small>{tr("En las mismas unidades utilizadas en el dataset")}</small>
             </div>
             <div class="biodata-single-prediction-context">
-                <span>{tr("Referencia en datos de prueba")}</span>
-                <strong>MAE {mae_text}</strong>
-                <small>{tr("El 90 % de los errores fue igual o menor a {p90}. No es un intervalo individual.", p90=p90_text)}</small>
+                <span>{tr("Error observado al probar el modelo")}</span>
+                <strong>{tr("Promedio: {mae}", mae=mae_text)}</strong>
+                <small>{tr("En 9 de cada 10 casos, el error fue de {p90} unidades o menos.", p90=p90_text)}</small>
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
+
+    with st.container(border=True):
+        st.markdown(f"#### {tr('¿Cómo leer este resultado?')}")
+        st.write(
+            tr(
+                "Según el modelo, el valor estimado de {target} para este caso es {value}. El valor real puede ser diferente.",
+                target=target_label.lower(),
+                value=prediction_text
+            )
+        )
+        st.write(
+            tr(
+                "Cuando Biodata probó el modelo con datos que no había usado para entrenarlo, las estimaciones se alejaron del valor real {mae} unidades en promedio.",
+                mae=mae_text
+            )
+        )
+        st.caption(
+            tr(
+                "El error promedio y la referencia de 9 de cada 10 casos describen el rendimiento general del modelo. No garantizan cuánto se equivocará en este caso particular."
+            )
+        )
 
     def readable_features(features):
         return ", ".join(
@@ -540,7 +601,7 @@ def render_new_observation_prediction(
     if assessment["missing_features"]:
         st.warning(
             tr(
-                "No se ingresaron valores para: {variables}. Biodata los completó con la mediana o la categoría más frecuente del entrenamiento; la estimación puede ser menos representativa.",
+                "Faltan datos en: {variables}. Para poder calcular, Biodata usó valores habituales del entrenamiento. Si podés obtener esos datos, completalos y calculá nuevamente para conseguir una estimación más representativa.",
                 variables=readable_features(assessment["missing_features"])
             )
         )
@@ -548,7 +609,7 @@ def render_new_observation_prediction(
     if assessment["out_of_range_features"]:
         st.warning(
             tr(
-                "Estas variables están fuera del rango observado durante el entrenamiento: {variables}. El modelo está extrapolando y el error puede ser mayor.",
+                "Revisá estos datos porque están fuera de los valores conocidos por el modelo: {variables}. Comprobá que las unidades y la escritura sean correctas. Si los datos son correctos, interpretá la estimación con más cautela.",
                 variables=readable_features(
                     assessment["out_of_range_features"]
                 )
@@ -558,7 +619,7 @@ def render_new_observation_prediction(
     if assessment["unseen_categories"]:
         st.warning(
             tr(
-                "Estas categorías no aparecían en el entrenamiento: {variables}. El modelo puede aprovechar menos información para este caso.",
+                "Hay opciones que el modelo no había visto antes en: {variables}. Revisá que estén bien escritas. Si son correctas, tené en cuenta que el modelo tiene menos información de referencia para este caso.",
                 variables=readable_features(assessment["unseen_categories"])
             )
         )
@@ -573,7 +634,7 @@ def render_new_observation_prediction(
     ):
         st.success(
             tr(
-                "Los valores ingresados están dentro de las referencias observadas durante el entrenamiento."
+                "Los datos ingresados coinciden con los tipos y valores que el modelo conoció durante el entrenamiento."
             )
         )
 
@@ -603,10 +664,30 @@ def render_new_observation_prediction(
             hide_index=True
         )
 
+    with st.container(border=True):
+        st.markdown(f"#### {tr('¿Qué conviene hacer ahora?')}")
+        st.markdown(
+            tr(
+                "1. **Revisá las advertencias:** indican si el modelo tuvo poca información para este caso.\n2. **Compará la estimación con una medición real** cuando sea posible.\n3. **No la uses sola para una decisión importante:** considerá el error del modelo y el criterio de una persona especialista."
+            )
+        )
+
     st.caption(
         tr(
-            "Esta es una estimación estadística, no una medición confirmada ni una explicación causal. Para decisiones importantes, contrastala con observaciones reales y criterio especializado."
+            "Esta es una estimación estadística: no confirma una medición ni demuestra una relación de causa y efecto."
         )
+    )
+
+    def clear_new_observation():
+        for input_state_key in input_state_keys:
+            st.session_state.pop(input_state_key, None)
+        st.session_state.pop(prediction_state_key, None)
+
+    st.button(
+        tr("Cargar otro caso"),
+        key=f"biodata_clear_new_observation_{analysis_token}",
+        on_click=clear_new_observation,
+        width="stretch"
     )
 
 

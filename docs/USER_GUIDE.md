@@ -171,18 +171,33 @@ The model can support ordering, prioritization or case review. It should not mak
 
 ### Predicting a new observation
 
-After evaluating the winning model on the held-out test set, Biodata fits it again using all valid cases. This final model remains available during the session and can estimate the target for an observation that was not part of the dataset.
+This section is for studying **one case collected after the analysis**. A new observation may be an animal measured in the field, a sampled plant, a laboratory sample or any other record with the same variables as the dataset.
+
+For example, after training a model with measurements from many plants, you can enter measurements from a newly observed plant to estimate the target. You do not need to add that row to the file or run the whole analysis again.
+
+#### How to use it
 
 1. Find **Predict a new observation** under **Models**.
-2. Enter the measurements and categories available for the new case.
-3. Use the same units and definitions as the original dataset.
-4. Leave a field empty only when the value is genuinely unknown. Biodata will apply the same imputation used during training.
-5. Select **Estimate new case**.
-6. Read the estimate together with MAE, P90 error and any displayed warnings.
+2. Read the introductory box. It explains what a new case is and which target will be estimated.
+3. In **Step 1**, enter the measurements and categories you know. Each field shows its data type and, when applicable, the range observed in the dataset.
+4. Use the same units and definitions as the original file.
+5. If a value is genuinely unknown, leave the field empty. Biodata can still calculate using a typical training value, but it will warn that the result may be less representative.
+6. Select **Calculate estimate**.
+7. In **Step 2**, read the estimated value first and then the explanation of the error observed during testing.
+8. Review every warning before using the result.
+
+#### How to interpret the result
+
+- **Estimated value:** the result calculated by the model for the entered case. It is not a confirmed measurement.
+- **Average error:** how far predictions differed from actual values on average when Biodata tested the model with reserved data.
+- **9-out-of-10 reference:** an error threshold that was not exceeded in 90% of test cases. It does not guarantee the error for this particular observation.
+- **Warnings:** explain whether data is missing, a measurement is outside the known range or a category is new to the model. Each warning also explains what to review.
 
 Biodata warns when a measurement falls outside the observed range, a category was absent from training, predictors are missing or the estimate falls outside the known target range. In these situations, the model has less relevant reference information and its error may increase.
 
-MAE and P90 error describe overall test-set performance; they are not a certainty interval for that particular case. The estimate remains in session memory and disappears when the application is closed or restarted.
+Select **Enter another case** to clear the form and study a different observation. The estimate remains in session memory and disappears when the application is closed or restarted.
+
+After evaluating the winning model on the held-out test set, Biodata fits it again using all valid cases. This final model remains available during the session. The new case does not modify the original dataset or previous results.
 
 ## 11. Downloadable report
 
